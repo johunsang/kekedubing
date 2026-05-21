@@ -138,7 +138,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 TMP_DIR.mkdir(parents=True, exist_ok=True)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title="kekedubing Local Backend")
+app = FastAPI(title="케케더빙 Local Backend")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -419,7 +419,7 @@ def save_store(store: dict[str, Any]) -> None:
 def health() -> dict[str, Any]:
     return {
         "success": True,
-        "project": "kekedubing",
+        "project": "케케더빙",
         "backend": "python",
         "max_upload_mb": MAX_UPLOAD_MB,
         "max_upload_bytes": MAX_UPLOAD_BYTES,

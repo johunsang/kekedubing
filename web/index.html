@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=Noto+Naskh+Arabic:wght@400;700&family=Noto+Sans+Devanagari:wght@400;700&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Sans+KR:wght@400;700;900&family=Noto+Sans+SC:wght@400;700;900&family=Noto+Sans:wght@400;700;900&display=swap" rel="stylesheet">
-  <title>kekedubing</title>
+  <title>케케더빙</title>
   <style>
     :root {
       --bg: #f6f7f9;
@@ -105,8 +105,8 @@
 <body>
   <header>
     <div>
-      <h1>kekedubing</h1>
-        <div class="tagline">Upload a short video. Whisper transcribes it, local translation changes the language, and the server builds the kekedubing video.</div>
+      <h1>케케더빙</h1>
+        <div class="tagline">Upload a video. Whisper transcribes it, local translation changes the language, and the server builds the dubbed video.</div>
     </div>
     <div id="uploadLimit" class="limit">No upload size limit</div>
   </header>
@@ -188,12 +188,12 @@
       <div class="result-head">
         <h2>Output</h2>
         <div class="actions">
-          <a id="downloadLink" class="download" href="#" download style="display:none;">Download kekedubing video</a>
+          <a id="downloadLink" class="download" href="#" download style="display:none;">Download dubbed video</a>
           <button id="openOutputButton" class="secondary" type="button">Open output folder</button>
           <button id="resetButton" class="secondary" type="button">New upload</button>
         </div>
       </div>
-      <div id="empty" class="empty">Your kekedubing video will appear here.</div>
+      <div id="empty" class="empty">Your dubbed video will appear here.</div>
       <video id="video" controls playsinline style="display:none;"></video>
       <div id="meta" class="meta"></div>
       <textarea id="srt" placeholder="Translated subtitles will appear here after processing." spellcheck="false"></textarea>
@@ -321,7 +321,7 @@
       downloadLink.style.display = 'inline-flex';
       srt.value = data.srt || '';
       meta.innerHTML = '<span>Detected: ' + (data.source_language || 'unknown') + '</span><span>Dubbed: ' + selectedLabel(targetLang) + '</span><span>Voice: ' + selectedLabel(voiceSelect) + '</span><span>Subtitles: ' + selectedLabel(subtitleStyle) + '</span><span>Position: ' + selectedLabel(subtitlePosition) + '</span><span>Size: ' + subtitleSize.value + '%</span><span>Segments: ' + ((data.segments || []).length) + '</span>';
-      setStatus('Done. Preview the kekedubing video and download it.', 'ok');
+      setStatus('Done. Preview the dubbed video and download it.', 'ok');
       setProgress(100);
     }
 

@@ -1,8 +1,16 @@
-# kekedubing
+# 케케더빙
 
-`kekedubing` is an open-source local video translation and dubbing tool. It can import a local video file or a supported video URL, preview the source, apply simple rectangular blur edits, translate speech, synthesize a dubbed voice, burn subtitles, and export the final MP4.
+**케케더빙** (`kekedubing`) is an open-source local video translation and dubbing tool. It can import a local video file or a supported video URL, preview the source, apply simple rectangular blur edits, translate speech, synthesize a dubbed voice, burn subtitles, and export the final MP4.
 
 The project is designed to avoid external APIs where possible and run with local models on your own machine.
+
+한국어 문서: [README.ko.md](README.ko.md)
+
+## Screenshots
+
+![케케더빙 app overview](docs/screenshots/app-overview.png)
+
+![Supported video sites modal](docs/screenshots/supported-sites-modal.png)
 
 ## Features
 

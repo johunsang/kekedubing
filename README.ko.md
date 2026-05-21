@@ -1,8 +1,16 @@
-# kekedubing
+# 케케더빙
 
-`kekedubing`은 영상 파일 또는 지원 사이트의 영상 URL을 로컬 서버에서 가져와 번역, 더빙, 자막 번인, 간단한 블러 편집까지 처리하는 오픈소스 도구입니다.
+**케케더빙** (`kekedubing`)은 영상 파일 또는 지원 사이트의 영상 URL을 로컬 서버에서 가져와 번역, 더빙, 자막 번인, 간단한 블러 편집까지 처리하는 오픈소스 도구입니다.
 
 API 사용을 최소화하고 가능한 한 로컬 모델과 로컬 실행 환경을 사용하도록 설계했습니다.
+
+English docs: [README.en.md](README.en.md)
+
+## 화면 캡처
+
+![케케더빙 앱 화면](docs/screenshots/app-overview.png)
+
+![지원 영상 사이트 모달](docs/screenshots/supported-sites-modal.png)
 
 ## 핵심 기능
 
