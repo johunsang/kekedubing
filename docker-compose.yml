@@ -1,0 +1,52 @@
+services:
+  kekedubing:
+    build: .
+    ports:
+      - "8801:8801"
+    environment:
+      MAX_UPLOAD_MB: "0"
+      WHISPER_MODEL: small
+      BGM_PROVIDER: procedural
+      DEFAULT_TARGET_LANG: en
+      DEFAULT_SOURCE_LANG: auto
+      SUPERTONIC_VOICE: M1
+      SUBTITLE_STYLE: bold
+      SUBTITLE_POSITION: bottom
+      SUBTITLE_SIZE: "100"
+      SUBTITLE_FONT: Noto Sans
+      MIN_DUB_SPEED: "0.85"
+      MAX_DUB_SPEED: "1.75"
+      SUPERTONIC_STEPS: "8"
+      SUPERTONIC_SPEED: "1.05"
+    volumes:
+      - ./data:/app/data
+      - ./web:/app/web:ro
+
+  kekedubing-musicgen:
+    profiles: ["musicgen"]
+    build:
+      context: .
+      args:
+        ENABLE_MUSICGEN: "1"
+    ports:
+      - "8801:8801"
+    environment:
+      MAX_UPLOAD_MB: "0"
+      WHISPER_MODEL: small
+      BGM_PROVIDER: musicgen
+      MUSICGEN_MODEL: facebook/musicgen-small
+      MUSICGEN_MAX_SECONDS: "20"
+      DEFAULT_TARGET_LANG: en
+      DEFAULT_SOURCE_LANG: auto
+      SUPERTONIC_VOICE: M1
+      SUBTITLE_STYLE: bold
+      SUBTITLE_POSITION: bottom
+      SUBTITLE_SIZE: "100"
+      SUBTITLE_FONT: Noto Sans
+      MIN_DUB_SPEED: "0.85"
+      MAX_DUB_SPEED: "1.75"
+      SUPERTONIC_STEPS: "8"
+      SUPERTONIC_SPEED: "1.05"
+    volumes:
+      - ./data:/app/data
+      - ./web:/app/web:ro

@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=Noto+Naskh+Arabic:wght@400;700&family=Noto+Sans+Devanagari:wght@400;700&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Sans+KR:wght@400;700;900&family=Noto+Sans+SC:wght@400;700;900&family=Noto+Sans:wght@400;700;900&display=swap" rel="stylesheet">
+  <title>kekedubing</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #17191f;
+      --muted: #6d7280;
+      --line: #e4e7ed;
+      --accent: #ff7a1a;
+      --accent-dark: #e45f00;
+      --ok: #1f9d55;
+      --bad: #d92d20;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: "Noto Sans", "Noto Sans KR", "Noto Sans JP", "Noto Sans SC", "Noto Naskh Arabic", "Noto Sans Devanagari", "Noto Color Emoji", ui-sans-serif, system-ui, sans-serif; }
+    body { padding: 28px; }
+    .shell { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 420px 1fr; gap: 18px; align-items: start; }
+    header { max-width: 1180px; margin: 0 auto 20px; display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+    h1 { margin: 0; font-size: 32px; letter-spacing: 0; }
+    .tagline { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    .limit { color: var(--muted); font-size: 13px; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+    .upload-zone { border: 2px dashed #cfd5df; border-radius: 8px; min-height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 14px; background: #fbfcfe; cursor: pointer; transition: border-color .15s, background .15s; }
+    .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: #fff8f1; }
+    .upload-icon { font-size: 42px; line-height: 1; }
+    .upload-title { font-size: 18px; font-weight: 800; }
+    .upload-copy { font-size: 13px; color: var(--muted); max-width: 280px; line-height: 1.5; }
+    input[type=file] { display: none; }
+    .file-name { margin-top: 10px; color: var(--muted); font-size: 12px; min-height: 18px; overflow-wrap: anywhere; }
+    .control { margin-top: 14px; display: grid; gap: 8px; }
+    .control label { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    select, input[type=url], input[type=search] { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); padding: 11px 12px; font-size: 14px; font-weight: 700; }
+    .inline-control { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+    .url-control { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+    .site-tools { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 12px; }
+    .site-tools button { padding: 8px 10px; font-size: 12px; }
+    .modal { position: fixed; inset: 0; z-index: 10; display: none; align-items: center; justify-content: center; padding: 22px; background: rgba(10, 15, 25, .58); }
+    .modal.open { display: flex; }
+    .modal-panel { width: min(920px, 100%); max-height: 86vh; display: grid; grid-template-rows: auto auto auto 1fr; gap: 12px; background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 24px 70px rgba(0,0,0,.28); }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .modal-title { margin: 0; font-size: 18px; }
+    .site-list { overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfe; }
+    .category-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+    .category-tabs button { flex: 0 0 auto; padding: 8px 10px; font-size: 12px; background: #eef1f6; color: var(--text); }
+    .category-tabs button.active { background: var(--accent); color: #fff; }
+    .site-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+    .site-row:last-child { border-bottom: 0; }
+    .site-name { font-weight: 800; overflow-wrap: anywhere; }
+    .site-category { color: var(--muted); font-size: 11px; font-weight: 900; text-transform: uppercase; }
+    .site-row a { color: var(--accent-dark); font-size: 12px; font-weight: 900; text-decoration: none; }
+    .site-row a.disabled { color: #adb3bf; pointer-events: none; }
+    .subtitle-preview { margin-top: 14px; min-height: 128px; border-radius: 8px; background: linear-gradient(160deg, #101827, #293548); display: grid; place-items: end center; padding: 16px; overflow: hidden; }
+    .source-preview { margin-top: 14px; display: none; }
+    .source-video-wrap { position: relative; background: #050505; border-radius: 8px; overflow: hidden; }
+    .source-preview video { max-height: 260px; }
+    .blur-box { position: absolute; left: 28%; top: 26%; width: 36%; height: 20%; border: 2px solid var(--accent); background: rgba(255,122,26,.16); cursor: move; display: none; }
+    .blur-box::after { content: ""; position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); cursor: nwse-resize; }
+    .edit-grid { margin-top: 12px; display: grid; grid-template-columns: 1fr; gap: 8px; }
+    .edit-grid label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    input[type=number], input[type=range] { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); padding: 9px 10px; font-size: 13px; font-weight: 700; }
+    .edit-actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .caption-sample { max-width: 92%; text-align: center; line-height: 1.15; font-weight: 900; letter-spacing: 0; }
+    .caption-sample.clean { color: #fff; font-size: 22px; text-shadow: 0 0 0 #000, 0 2px 2px #000; }
+    .caption-sample.bold { color: #fff; font-size: 25px; -webkit-text-stroke: 1px #000; text-shadow: 0 3px 0 #000; }
+    .caption-sample.yellow { color: #ffd700; font-size: 25px; -webkit-text-stroke: 1px #000; text-shadow: 0 3px 0 #000; }
+    .caption-sample.boxed { color: #fff; font-size: 23px; background: rgba(0,0,0,.72); padding: 8px 12px; border-radius: 6px; }
+    .caption-sample.neon { color: #5cff6a; font-size: 25px; -webkit-text-stroke: 1px #001810; text-shadow: 0 0 8px currentColor; }
+    .caption-sample.box { color: #fff; font-size: 22px; background: rgba(0,0,0,.76); padding: 8px 12px; border-radius: 6px; }
+    .caption-sample.news { color: #fff; font-size: 20px; background: #1717d9; padding: 7px 12px; border-radius: 2px; }
+    .caption-sample.minimal { color: #fff; font-size: 19px; text-shadow: 0 1px 2px #000; }
+    .caption-sample.large { color: #fff; font-size: 28px; -webkit-text-stroke: 1px #000; text-shadow: 0 3px 0 #000; }
+    button, .download { appearance: none; border: 0; border-radius: 8px; background: var(--accent); color: #fff; padding: 10px 14px; font-size: 14px; font-weight: 800; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+    button:hover, .download:hover { background: var(--accent-dark); }
+    button.secondary { background: #eef1f6; color: var(--text); }
+    button.secondary:hover { background: #e1e6ef; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    .status { margin-top: 14px; padding: 12px; border-radius: 8px; border: 1px solid var(--line); background: #fff; font-size: 13px; color: var(--muted); min-height: 44px; }
+    .status.ok { color: var(--ok); background: #f0fbf4; border-color: #cdeed8; }
+    .status.bad { color: var(--bad); background: #fff3f1; border-color: #ffd0ca; }
+    .progress { height: 8px; border-radius: 999px; background: #e9edf4; margin-top: 12px; overflow: hidden; }
+    .bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #ffb000); transition: width .2s; }
+    .result-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    h2 { margin: 0; font-size: 18px; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    video { width: 100%; max-height: 520px; background: #050505; border-radius: 8px; display: block; }
+    textarea { width: 100%; min-height: 220px; margin-top: 14px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 12px; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); background: #fbfcfe; }
+    .empty { min-height: 520px; display: grid; place-items: center; color: var(--muted); border: 1px solid var(--line); border-radius: 8px; background: #fbfcfe; text-align: center; padding: 28px; }
+    .meta { margin-top: 12px; font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+    @media (max-width: 900px) {
+      body { padding: 16px; }
+      header, .shell { display: block; }
+      .panel { margin-bottom: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>kekedubing</h1>
+        <div class="tagline">Upload a short video. Whisper transcribes it, local translation changes the language, and the server builds the kekedubing video.</div>
+    </div>
+    <div id="uploadLimit" class="limit">No upload size limit</div>
+  </header>
+
+  <main class="shell">
+    <section class="panel">
+      <label id="dropZone" class="upload-zone" for="fileInput">
+        <div class="upload-icon">↑</div>
+        <div class="upload-title">Upload a short</div>
+        <div class="upload-copy">MP4, MOV, M4V, WEBM, or MKV. Processing starts immediately after upload.</div>
+        <button type="button" id="pickButton">Choose video</button>
+      </label>
+      <div id="fileName" class="file-name">No video selected.</div>
+      <div class="control">
+        <label for="videoUrl">Video URL</label>
+        <div class="url-control">
+          <input id="videoUrl" type="url" placeholder="Paste a supported video URL">
+          <button type="button" id="urlButton">Process URL</button>
+        </div>
+        <div class="site-tools">
+          <span id="sitesSummary">Supported video sites loading...</span>
+          <button type="button" id="sitesButton" class="secondary">Browse sites</button>
+        </div>
+      </div>
+      <div class="control">
+        <label for="sourceLang">Source language</label>
+        <select id="sourceLang"></select>
+      </div>
+      <div class="control">
+        <label for="targetLang">Target language</label>
+        <div class="inline-control">
+          <select id="targetLang"></select>
+          <button type="button" id="downloadResourcesButton" class="secondary">Download</button>
+        </div>
+      </div>
+      <div class="control">
+        <label for="voiceSelect">Voice</label>
+        <div class="inline-control">
+          <select id="voiceSelect"></select>
+          <button type="button" id="previewButton" class="secondary">Preview</button>
+        </div>
+      </div>
+      <div class="control">
+        <label for="subtitleStyle">Subtitle style</label>
+        <select id="subtitleStyle"></select>
+      </div>
+      <div class="control">
+        <label for="subtitlePosition">Subtitle position</label>
+        <select id="subtitlePosition"></select>
+      </div>
+      <div class="control">
+        <label for="subtitleSize">Subtitle size</label>
+        <input id="subtitleSize" type="range" min="50" max="180" step="5" value="100">
+      </div>
+      <div class="subtitle-preview">
+        <div id="captionSample" class="caption-sample bold">Translated subtitles preview</div>
+      </div>
+      <div id="sourcePreview" class="source-preview">
+        <div id="sourceVideoWrap" class="source-video-wrap">
+          <video id="sourceVideo" controls playsinline></video>
+          <div id="blurBox" class="blur-box"></div>
+        </div>
+        <div class="edit-grid">
+          <label>Blur
+            <input id="blurStrength" type="range" min="0" max="30" step="1" value="0">
+          </label>
+        </div>
+        <div class="edit-actions">
+          <button type="button" id="applyEditButton" class="secondary">Apply edit</button>
+          <button type="button" id="dubSourceButton">Dub current video</button>
+        </div>
+      </div>
+      <input id="fileInput" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,.m4v,.mov,.mkv">
+      <div id="status" class="status">Waiting for a video.</div>
+      <div class="progress"><div id="bar" class="bar"></div></div>
+    </section>
+
+    <section class="panel">
+      <div class="result-head">
+        <h2>Output</h2>
+        <div class="actions">
+          <a id="downloadLink" class="download" href="#" download style="display:none;">Download kekedubing video</a>
+          <button id="openOutputButton" class="secondary" type="button">Open output folder</button>
+          <button id="resetButton" class="secondary" type="button">New upload</button>
+        </div>
+      </div>
+      <div id="empty" class="empty">Your kekedubing video will appear here.</div>
+      <video id="video" controls playsinline style="display:none;"></video>
+      <div id="meta" class="meta"></div>
+      <textarea id="srt" placeholder="Translated subtitles will appear here after processing." spellcheck="false"></textarea>
+    </section>
+  </main>
+
+  <div id="siteModal" class="modal" aria-hidden="true">
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="siteModalTitle">
+      <div class="modal-head">
+        <h2 id="siteModalTitle" class="modal-title">Supported video sites</h2>
+        <button type="button" id="closeSites" class="secondary">Close</button>
+      </div>
+      <input id="siteSearch" type="search" placeholder="Search 1,871 supported sites">
+      <div id="categoryTabs" class="category-tabs"></div>
+      <div id="siteList" class="site-list">Loading...</div>
+    </div>
+  </div>
+
+  <script>
+    let maxBytes = 0;
+    let maxUploadMb = 0;
+    let previewAudio = null;
+    let currentSource = null;
+    let languageResources = { source_ready: [], target_ready: [] };
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const pickButton = document.getElementById('pickButton');
+    const fileName = document.getElementById('fileName');
+    const videoUrl = document.getElementById('videoUrl');
+    const urlButton = document.getElementById('urlButton');
+    const uploadLimit = document.getElementById('uploadLimit');
+    const sourceLang = document.getElementById('sourceLang');
+    const targetLang = document.getElementById('targetLang');
+    const downloadResourcesButton = document.getElementById('downloadResourcesButton');
+    const voiceSelect = document.getElementById('voiceSelect');
+    const previewButton = document.getElementById('previewButton');
+    const subtitleStyle = document.getElementById('subtitleStyle');
+    const subtitlePosition = document.getElementById('subtitlePosition');
+    const subtitleSize = document.getElementById('subtitleSize');
+    const captionSample = document.getElementById('captionSample');
+    const sourcePreview = document.getElementById('sourcePreview');
+    const sourceVideoWrap = document.getElementById('sourceVideoWrap');
+    const sourceVideo = document.getElementById('sourceVideo');
+    const blurBox = document.getElementById('blurBox');
+    const blurStrength = document.getElementById('blurStrength');
+    const applyEditButton = document.getElementById('applyEditButton');
+    const dubSourceButton = document.getElementById('dubSourceButton');
+    const siteModal = document.getElementById('siteModal');
+    const sitesButton = document.getElementById('sitesButton');
+    const closeSites = document.getElementById('closeSites');
+    const siteSearch = document.getElementById('siteSearch');
+    const categoryTabs = document.getElementById('categoryTabs');
+    const sitesSummary = document.getElementById('sitesSummary');
+    const siteList = document.getElementById('siteList');
+    const statusEl = document.getElementById('status');
+    const bar = document.getElementById('bar');
+    const empty = document.getElementById('empty');
+    const video = document.getElementById('video');
+    const srt = document.getElementById('srt');
+    const meta = document.getElementById('meta');
+    const downloadLink = document.getElementById('downloadLink');
+    const openOutputButton = document.getElementById('openOutputButton');
+    const resetButton = document.getElementById('resetButton');
+    let allSites = [];
+    let activeCategory = 'All';
+    const categories = ['All', 'Social', 'Video', 'Music', 'News', 'Sports', 'Learning', 'Adult', 'Other'];
+
+    function setStatus(message, type) {
+      statusEl.textContent = message;
+      statusEl.className = 'status' + (type ? ' ' + type : '');
+    }
+
+    function setProgress(value) {
+      bar.style.width = Math.max(0, Math.min(100, value)) + '%';
+    }
+
+    function selectedLabel(select) {
+      return select.options[select.selectedIndex] ? select.options[select.selectedIndex].textContent : select.value;
+    }
+
+    function fillSelect(select, items, selected, readyCodes) {
+      const ready = new Set(readyCodes || []);
+      select.innerHTML = '';
+      items.forEach((item) => {
+        const option = document.createElement('option');
+        option.value = item.code;
+        option.textContent = item.label + ' - ' + item.code + (ready.has(item.code) ? ' (Installed)' : '');
+        if (item.code === selected) option.selected = true;
+        select.appendChild(option);
+      });
+    }
+
+    function updateSubtitlePreview() {
+      const value = subtitleStyle.value || 'bold';
+      let preview = value;
+      if (value.includes('neon') || value.includes('gaming')) preview = 'neon';
+      else if (value.includes('box') || value.includes('podcast') || value.includes('lecture') || value.includes('finance')) preview = 'box';
+      else if (value.includes('news') || value.includes('breaking') || value.includes('warning')) preview = 'news';
+      else if (value.includes('minimal') || value.includes('cinema') || value.includes('documentary') || value.includes('soft')) preview = 'minimal';
+      else if (value.includes('large') || value.includes('shorts') || value.includes('tiktok') || value.includes('reels')) preview = 'large';
+      else if (value.includes('yellow') || value.includes('karaoke')) preview = 'yellow';
+      else if (value.includes('boxed')) preview = 'boxed';
+      captionSample.className = 'caption-sample ' + preview;
+      captionSample.style.transform = 'scale(' + ((Number(subtitleSize.value || 100)) / 100) + ')';
+    }
+
+    function selectedOptions() {
+      return {
+        source_lang: sourceLang.value,
+        target_lang: targetLang.value,
+        voice: voiceSelect.value,
+        subtitle_style: subtitleStyle.value,
+        subtitle_position: subtitlePosition.value,
+        subtitle_size: subtitleSize.value
+      };
+    }
+
+    function renderResult(data) {
+      const playUrl = data.play_url || data.download_url;
+      video.src = playUrl;
+      video.style.display = 'block';
+      empty.style.display = 'none';
+      downloadLink.href = data.download_url || playUrl;
+      downloadLink.download = 'kekedubing-output.mp4';
+      downloadLink.style.display = 'inline-flex';
+      srt.value = data.srt || '';
+      meta.innerHTML = '<span>Detected: ' + (data.source_language || 'unknown') + '</span><span>Dubbed: ' + selectedLabel(targetLang) + '</span><span>Voice: ' + selectedLabel(voiceSelect) + '</span><span>Subtitles: ' + selectedLabel(subtitleStyle) + '</span><span>Position: ' + selectedLabel(subtitlePosition) + '</span><span>Size: ' + subtitleSize.value + '%</span><span>Segments: ' + ((data.segments || []).length) + '</span>';
+      setStatus('Done. Preview the kekedubing video and download it.', 'ok');
+      setProgress(100);
+    }
+
+    function showSource(data) {
+      currentSource = data;
+      sourceVideo.src = data.play_url;
+      sourcePreview.style.display = 'block';
+      blurStrength.value = '0';
+      blurBox.style.display = 'none';
+      blurBox.style.left = '28%';
+      blurBox.style.top = '26%';
+      blurBox.style.width = '36%';
+      blurBox.style.height = '20%';
+      fileName.textContent = data.title || 'Source video ready.';
+      setStatus('Source video is ready. Draw a blur box if needed, then dub the current video.', 'ok');
+      setProgress(100);
+    }
+
+    function getBlurBox() {
+      const box = blurBox.getBoundingClientRect();
+      const wrap = sourceVideoWrap.getBoundingClientRect();
+      return {
+        x: Math.max(0, (box.left - wrap.left) / wrap.width),
+        y: Math.max(0, (box.top - wrap.top) / wrap.height),
+        width: Math.min(1, box.width / wrap.width),
+        height: Math.min(1, box.height / wrap.height)
+      };
+    }
+
+    function setBlurBoxFromPointer(event, mode, start) {
+      const wrap = sourceVideoWrap.getBoundingClientRect();
+      const dx = ((event.clientX || event.touches?.[0]?.clientX) - start.x) / wrap.width * 100;
+      const dy = ((event.clientY || event.touches?.[0]?.clientY) - start.y) / wrap.height * 100;
+      if (mode === 'resize') {
+        blurBox.style.width = Math.max(8, Math.min(96 - start.left, start.width + dx)) + '%';
+        blurBox.style.height = Math.max(8, Math.min(96 - start.top, start.height + dy)) + '%';
+      } else {
+        const width = parseFloat(blurBox.style.width);
+        const height = parseFloat(blurBox.style.height);
+        blurBox.style.left = Math.max(0, Math.min(100 - width, start.left + dx)) + '%';
+        blurBox.style.top = Math.max(0, Math.min(100 - height, start.top + dy)) + '%';
+      }
+    }
+
+    function startBlurDrag(event) {
+      if (blurBox.style.display === 'none') return;
+      event.preventDefault();
+      const rect = blurBox.getBoundingClientRect();
+      const mode = event.offsetX > rect.width - 18 && event.offsetY > rect.height - 18 ? 'resize' : 'move';
+      const start = {
+        x: event.clientX || event.touches?.[0]?.clientX,
+        y: event.clientY || event.touches?.[0]?.clientY,
+        left: parseFloat(blurBox.style.left),
+        top: parseFloat(blurBox.style.top),
+        width: parseFloat(blurBox.style.width),
+        height: parseFloat(blurBox.style.height)
+      };
+      const move = (moveEvent) => setBlurBoxFromPointer(moveEvent, mode, start);
+      const stop = () => {
+        window.removeEventListener('mousemove', move);
+        window.removeEventListener('mouseup', stop);
+      };
+      window.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', stop);
+    }
+
+    sourceVideoWrap.addEventListener('click', (event) => {
+      if (event.target === blurBox) return;
+      const wrap = sourceVideoWrap.getBoundingClientRect();
+      blurBox.style.display = 'block';
+      blurBox.style.width = '28%';
+      blurBox.style.height = '16%';
+      blurBox.style.left = Math.max(0, Math.min(72, ((event.clientX - wrap.left) / wrap.width * 100) - 14)) + '%';
+      blurBox.style.top = Math.max(0, Math.min(84, ((event.clientY - wrap.top) / wrap.height * 100) - 8)) + '%';
+      blurStrength.value = Math.max(10, Number(blurStrength.value || 0));
+    });
+
+    blurBox.addEventListener('mousedown', startBlurDrag);
+
+    async function loadConfig() {
+      try {
+        const response = await fetch('/api/config', { cache: 'no-store' });
+        const config = await response.json();
+        maxBytes = config.max_upload_bytes || 0;
+        maxUploadMb = config.max_upload_mb || 0;
+        languageResources = config.language_resources || languageResources;
+        uploadLimit.textContent = maxBytes ? 'Max upload: ' + maxUploadMb + 'MB' : 'No upload size limit';
+        fillSelect(sourceLang, config.source_languages || [], config.default_source_lang || 'auto', languageResources.source_ready);
+        fillSelect(targetLang, config.target_languages || [], config.default_target_lang || 'en', languageResources.target_ready);
+        fillSelect(voiceSelect, config.voices || [], config.default_voice || 'M1');
+        fillSelect(subtitleStyle, config.subtitle_styles || [], config.default_subtitle_style || 'bold');
+        fillSelect(subtitlePosition, config.subtitle_positions || [], config.default_subtitle_position || 'bottom');
+        subtitleSize.value = config.default_subtitle_size || 100;
+        updateSubtitlePreview();
+      } catch (error) {
+        uploadLimit.textContent = maxBytes ? 'Max upload: ' + maxUploadMb + 'MB' : 'No upload size limit';
+        fillSelect(sourceLang, [{ code: 'auto', label: 'Auto detect' }], 'auto', ['auto']);
+        fillSelect(targetLang, [{ code: 'en', label: 'English' }], 'en', ['en']);
+        fillSelect(voiceSelect, [{ code: 'M1', label: 'Male 1' }], 'M1');
+        fillSelect(subtitleStyle, [{ code: 'bold', label: 'Bold outline' }], 'bold');
+        fillSelect(subtitlePosition, [{ code: 'bottom', label: 'Bottom' }], 'bottom');
+        subtitleSize.value = 100;
+        updateSubtitlePreview();
+      }
+    }
+
+    function categoryForSite(name) {
+      const value = name.toLowerCase();
+      if (/(instagram|facebook|tiktok|twitter|x\\.com|reddit|threads|snapchat|pinterest|tumblr|linkedin|vk|weibo)/.test(value)) return 'Social';
+      if (/(youtube|vimeo|dailymotion|bilibili|twitch|stream|tv|video|clip|vod|live|tube|rumble|kick)/.test(value)) return 'Video';
+      if (/(soundcloud|spotify|bandcamp|music|audio|podcast|mixcloud|deezer|applemusic)/.test(value)) return 'Music';
+      if (/(news|bbc|cnn|reuters|bloomberg|nytimes|guardian|washingtonpost|weather|media|press)/.test(value)) return 'News';
+      if (/(sport|nba|nfl|mlb|nhl|espn|ufc|fifa|football|soccer|tennis|golf)/.test(value)) return 'Sports';
+      if (/(course|academy|lecture|learn|education|ted|khan|academic|university|school)/.test(value)) return 'Learning';
+      if (/(porn|xhamster|xvideos|redtube|youporn|adult|onlyfans)/.test(value)) return 'Adult';
+      return 'Other';
+    }
+
+    function visitUrlForSite(name) {
+      const lower = name.toLowerCase().replace(/\s+\/\s+.*/, '');
+      const known = {
+        youtube: 'https://www.youtube.com',
+        tiktok: 'https://www.tiktok.com',
+        instagram: 'https://www.instagram.com',
+        facebook: 'https://www.facebook.com',
+        twitter: 'https://twitter.com',
+        x: 'https://x.com',
+        vimeo: 'https://vimeo.com',
+        dailymotion: 'https://www.dailymotion.com',
+        twitch: 'https://www.twitch.tv',
+        reddit: 'https://www.reddit.com',
+        bilibili: 'https://www.bilibili.com',
+        soundcloud: 'https://soundcloud.com',
+        spotify: 'https://open.spotify.com',
+        pinterest: 'https://www.pinterest.com',
+        linkedin: 'https://www.linkedin.com',
+        tumblr: 'https://www.tumblr.com'
+      };
+      for (const key in known) {
+        if (lower.includes(key)) return known[key];
+      }
+      const domain = lower.match(/[a-z0-9-]+\\.(com|net|org|tv|io|co|kr|jp|de|fr|uk|au|ca|ru|cn|me|fm|ly|to)/);
+      return domain ? 'https://' + domain[0] : '';
+    }
+
+    function renderCategoryTabs() {
+      categoryTabs.innerHTML = '';
+      categories.forEach((category) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = category;
+        button.className = category === activeCategory ? 'active' : '';
+        button.addEventListener('click', () => {
+          activeCategory = category;
+          renderCategoryTabs();
+          renderSites();
+        });
+        categoryTabs.appendChild(button);
+      });
+    }
+
+    function renderSites() {
+      const query = siteSearch.value.trim().toLowerCase();
+      const matches = allSites
+        .filter((site) => activeCategory === 'All' || site.category === activeCategory)
+        .filter((site) => !query || site.name.toLowerCase().includes(query))
+        .slice(0, 300);
+      siteList.innerHTML = '';
+      if (!matches.length) {
+        siteList.textContent = 'No matching sites.';
+        return;
+      }
+      matches.forEach((site) => {
+        const row = document.createElement('div');
+        row.className = 'site-row';
+        const name = document.createElement('div');
+        name.className = 'site-name';
+        name.textContent = site.name;
+        const category = document.createElement('div');
+        category.className = 'site-category';
+        category.textContent = site.category;
+        const search = document.createElement('a');
+        search.href = 'https://www.google.com/search?q=' + encodeURIComponent(site.name + ' video site');
+        search.target = '_blank';
+        search.rel = 'noreferrer';
+        search.textContent = 'Search';
+        const visit = document.createElement('a');
+        visit.href = site.visitUrl || '#';
+        visit.target = '_blank';
+        visit.rel = 'noreferrer';
+        visit.textContent = 'Visit';
+        if (!site.visitUrl) visit.className = 'disabled';
+        row.append(name, category, search, visit);
+        siteList.appendChild(row);
+      });
+    }
+
+    function openSiteModal() {
+      siteModal.classList.add('open');
+      siteModal.setAttribute('aria-hidden', 'false');
+      siteSearch.focus();
+      renderSites();
+    }
+
+    function closeSiteModal() {
+      siteModal.classList.remove('open');
+      siteModal.setAttribute('aria-hidden', 'true');
+    }
+
+    async function loadSupportedSites() {
+      try {
+        const response = await fetch('/api/video-sites', { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.detail || 'Could not load sites.');
+        allSites = data.sites.map((name) => ({
+          name,
+          category: categoryForSite(name),
+          visitUrl: visitUrlForSite(name)
+        }));
+        sitesSummary.textContent = 'Supported video sites: ' + data.count;
+        siteSearch.placeholder = 'Search ' + data.count + ' supported sites';
+        renderCategoryTabs();
+        renderSites();
+      } catch (error) {
+        sitesSummary.textContent = 'Supported video sites unavailable';
+        siteList.textContent = error.message || 'Could not load sites.';
+      }
+    }
+
+    function reset() {
+      fileInput.value = '';
+      currentSource = null;
+      fileName.textContent = 'No video selected.';
+      videoUrl.value = '';
+      sourcePreview.style.display = 'none';
+      sourceVideo.removeAttribute('src');
+      setStatus('Waiting for a video.');
+      setProgress(0);
+      empty.style.display = 'grid';
+      video.style.display = 'none';
+      video.removeAttribute('src');
+      downloadLink.style.display = 'none';
+      downloadLink.removeAttribute('href');
+      srt.value = '';
+      meta.textContent = '';
+    }
+
+    async function processFile(file) {
+      if (!file) return;
+      if (maxBytes && file.size > maxBytes) {
+        setStatus('Upload limit is ' + maxUploadMb + 'MB. Please choose a smaller short.', 'bad');
+        setProgress(0);
+        return;
+      }
+
+      reset();
+      fileName.textContent = file.name;
+      setStatus('Uploading source video for preview...');
+      setProgress(12);
+
+      const form = new FormData();
+      form.append('file', file);
+
+      try {
+        const response = await fetch('/api/upload-video', {
+          method: 'POST',
+          body: form
+        });
+        setProgress(80);
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.detail || data.error || 'Upload failed.');
+        }
+        showSource(data);
+      } catch (error) {
+        setStatus(error.message || 'Processing failed.', 'bad');
+        setProgress(0);
+      }
+    }
+
+    async function processUrl() {
+      const url = videoUrl.value.trim();
+      if (!url) {
+        setStatus('Paste a video URL first.', 'bad');
+        return;
+      }
+
+      fileInput.value = '';
+      fileName.textContent = 'Remote video URL selected.';
+      setStatus('Downloading the video for preview...');
+      setProgress(8);
+
+      try {
+        const response = await fetch('/api/import-video-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        setProgress(80);
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.detail || data.error || 'Download failed.');
+        }
+        showSource(data);
+      } catch (error) {
+        setStatus(error.message || 'Processing failed.', 'bad');
+        setProgress(0);
+      }
+    }
+
+    async function applyEdit() {
+      if (!currentSource) {
+        setStatus('Upload or download a source video first.', 'bad');
+        return;
+      }
+      applyEditButton.disabled = true;
+      setStatus('Applying edit to the source video...');
+      setProgress(18);
+      try {
+        const response = await fetch('/api/edit-video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            video_path: currentSource.video_path,
+            blur_strength: blurStrength.value,
+            blur_box: blurBox.style.display === 'none' ? null : getBlurBox()
+          })
+        });
+        setProgress(84);
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.detail || data.error || 'Edit failed.');
+        }
+        showSource(data);
+      } catch (error) {
+        setStatus(error.message || 'Edit failed.', 'bad');
+        setProgress(0);
+      } finally {
+        applyEditButton.disabled = false;
+      }
+    }
+
+    async function dubCurrentSource() {
+      if (!currentSource) {
+        setStatus('Upload or download a source video first.', 'bad');
+        return;
+      }
+      dubSourceButton.disabled = true;
+      setStatus('Dubbing current video and burning subtitles...');
+      setProgress(12);
+      try {
+        const response = await fetch('/api/auto-dub-existing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ video_path: currentSource.video_path, ...selectedOptions() })
+        });
+        setProgress(76);
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.detail || data.error || 'Dubbing failed.');
+        }
+        renderResult(data);
+      } catch (error) {
+        setStatus(error.message || 'Dubbing failed.', 'bad');
+        setProgress(0);
+      } finally {
+        dubSourceButton.disabled = false;
+      }
+    }
+
+    async function previewVoice() {
+      previewButton.disabled = true;
+      setStatus('Generating voice preview...');
+      try {
+        const response = await fetch('/api/voice-preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lang: targetLang.value,
+            voice: voiceSelect.value,
+            text: 'This is a Supertonic voice preview.'
+          })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.detail || data.error || 'Voice preview failed.');
+        }
+        if (previewAudio) previewAudio.pause();
+        previewAudio = new Audio('data:' + data.mime_type + ';base64,' + data.audio_data);
+        await previewAudio.play();
+        setStatus('Playing ' + selectedLabel(voiceSelect) + ' preview.', 'ok');
+      } catch (error) {
+        setStatus(error.message || 'Voice preview failed.', 'bad');
+      } finally {
+        previewButton.disabled = false;
+      }
+    }
+
+    async function openOutputFolder() {
+      try {
+        const response = await fetch('/api/open-output-folder', { method: 'POST' });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.detail || data.error || 'Could not open output folder.');
+        }
+        setStatus(data.opened ? 'Output folder opened.' : 'Output folder: ' + data.path, 'ok');
+      } catch (error) {
+        setStatus(error.message || 'Could not open output folder.', 'bad');
+      }
+    }
+
+    async function downloadLanguageResources() {
+      downloadResourcesButton.disabled = true;
+      setStatus('Downloading language resources. This can take a while the first time...');
+      try {
+        const response = await fetch('/api/download-language-resources', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source_lang: sourceLang.value,
+            target_lang: targetLang.value
+          })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          const pairs = (data.translation_pairs || []).map((item) => item.source + '->' + item.target).join(', ');
+          throw new Error(data.detail || ('Could not install every model: ' + pairs));
+        }
+        const pairs = (data.translation_pairs || []).map((item) => item.source + '->' + item.target).join(', ') || 'already installed';
+        if (data.language_resources) {
+          languageResources = data.language_resources;
+          const sourceValue = sourceLang.value;
+          const targetValue = targetLang.value;
+          fillSelect(sourceLang, Array.from(sourceLang.options).map((option) => ({ code: option.value, label: option.textContent.replace(' (Installed)', '').replace(' - ' + option.value, '') })), sourceValue, languageResources.source_ready);
+          fillSelect(targetLang, Array.from(targetLang.options).map((option) => ({ code: option.value, label: option.textContent.replace(' (Installed)', '').replace(' - ' + option.value, '') })), targetValue, languageResources.target_ready);
+        }
+        setStatus('Language resources ready: ' + pairs + '. Font: ' + data.font, 'ok');
+      } catch (error) {
+        setStatus(error.message || 'Language resource download failed.', 'bad');
+      } finally {
+        downloadResourcesButton.disabled = false;
+      }
+    }
+
+    pickButton.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => processFile(fileInput.files[0]));
+    urlButton.addEventListener('click', processUrl);
+    resetButton.addEventListener('click', reset);
+    openOutputButton.addEventListener('click', openOutputFolder);
+    downloadResourcesButton.addEventListener('click', downloadLanguageResources);
+    previewButton.addEventListener('click', previewVoice);
+    subtitleStyle.addEventListener('change', updateSubtitlePreview);
+    subtitlePosition.addEventListener('change', updateSubtitlePreview);
+    subtitleSize.addEventListener('input', updateSubtitlePreview);
+    applyEditButton.addEventListener('click', applyEdit);
+    dubSourceButton.addEventListener('click', dubCurrentSource);
+    sitesButton.addEventListener('click', openSiteModal);
+    closeSites.addEventListener('click', closeSiteModal);
+    siteSearch.addEventListener('input', renderSites);
+    siteModal.addEventListener('click', (event) => {
+      if (event.target === siteModal) closeSiteModal();
+    });
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeSiteModal();
+    });
+
+    ['dragenter', 'dragover'].forEach((eventName) => {
+      dropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropZone.classList.add('dragover');
+      });
+    });
+    ['dragleave', 'drop'].forEach((eventName) => {
+      dropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropZone.classList.remove('dragover');
+      });
+    });
+    dropZone.addEventListener('drop', (event) => processFile(event.dataTransfer.files[0]));
+    loadConfig();
+    loadSupportedSites();
+  </script>
+</body>
+</html>

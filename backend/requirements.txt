@@ -1,0 +1,7 @@
+fastapi==0.125.0
+uvicorn[standard]==0.38.0
+python-multipart==0.0.21
+argostranslate==1.11.0
+faster-whisper==1.2.1
+supertonic
+yt-dlp
