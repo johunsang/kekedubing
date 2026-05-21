@@ -19,7 +19,7 @@ import argostranslate.translate
 import argostranslate.package
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 ROOT = Path(os.getenv("APP_ROOT", "/app")).resolve()
@@ -636,6 +636,78 @@ async def transcribe_translate(request: Request) -> dict[str, Any]:
         srt = to_srt(segments, target_lang)
 
     return {"success": True, "srt": srt, "segments": segments, "target_lang": target_lang}
+
+
+@app.post("/api/transcribe-translate-stream")
+async def transcribe_translate_stream(request: Request) -> StreamingResponse:
+    payload = await request.json()
+    target_lang = str(payload.get("target_lang") or os.getenv("DEFAULT_TARGET_LANG", "en"))
+    source_lang = validate_source_lang(str(payload.get("source_lang") or os.getenv("DEFAULT_SOURCE_LANG", "auto")))
+    media = safe_path(str(payload.get("video_path") or ""))
+    if target_lang not in SUPERTONIC_LANGUAGE_CODES:
+        raise HTTPException(status_code=400, detail=f"Unsupported target language: {target_lang}")
+
+    def send(event: dict[str, Any]) -> bytes:
+        return (json.dumps(event, ensure_ascii=False) + "\n").encode("utf-8")
+
+    def stream():
+        try:
+            from faster_whisper import WhisperModel
+        except Exception as exc:
+            yield send({"type": "error", "message": f"faster-whisper is not available: {exc}"})
+            return
+
+        try:
+            yield send({"type": "status", "message": "Transcribing source audio..."})
+            model_size = os.getenv("WHISPER_MODEL", "small")
+            model = WhisperModel(model_size, device="cpu", compute_type="int8")
+            raw_segments, info = model.transcribe(
+                str(media),
+                language=source_lang,
+                vad_filter=True,
+                beam_size=5,
+            )
+            detected_lang = source_lang or getattr(info, "language", None) or "en"
+            yield send({"type": "detected", "source_language": detected_lang, "target_language": target_lang})
+
+            entries: list[dict[str, Any]] = []
+            for index, segment in enumerate(raw_segments, start=1):
+                source_text = segment.text.strip()
+                if not source_text:
+                    continue
+                translated = translate_with_pivot(source_text, detected_lang, target_lang)
+                translated = re.sub(r"\s+", " ", translated).strip()
+                entry = {
+                    "start": float(segment.start),
+                    "end": float(segment.end),
+                    "source_text": source_text,
+                    "text": translated,
+                    "language": target_lang,
+                }
+                entries.append(entry)
+                srt_block = (
+                    f"{len(entries)}\n"
+                    f"{fmt_srt_time(entry['start'])} --> {fmt_srt_time(entry['end'])}\n"
+                    f"{wrap_subtitle_text(translated)}"
+                )
+                yield send({"type": "segment", "index": len(entries), "segment": entry, "srt_block": srt_block})
+
+            yield send(
+                {
+                    "type": "done",
+                    "success": True,
+                    "source_language": detected_lang,
+                    "target_language": target_lang,
+                    "segments": entries,
+                    "srt": write_srt(entries),
+                }
+            )
+        except HTTPException as exc:
+            yield send({"type": "error", "message": str(exc.detail)})
+        except Exception as exc:
+            yield send({"type": "error", "message": str(exc)})
+
+    return StreamingResponse(stream(), media_type="application/x-ndjson; charset=utf-8")
 
 
 @app.post("/api/upload-video")

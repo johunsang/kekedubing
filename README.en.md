@@ -16,6 +16,7 @@ The project is designed to avoid external APIs where possible and run with local
 
 - Upload a local video file
 - Import a video from supported sites
+- Show live translated subtitles after a URL video is imported
 - Search 1,800+ supported video sites in a modal
 - Category filters: Social, Video, Music, News, Sports, Learning, Adult, Other
 - Preview the source video before rendering

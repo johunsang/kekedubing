@@ -217,6 +217,7 @@
     let maxUploadMb = 0;
     let previewAudio = null;
     let currentSource = null;
+    let translationAbort = null;
     let languageResources = { source_ready: [], target_ready: [] };
     const fileInput = document.getElementById('fileInput');
     const dropZone = document.getElementById('dropZone');
@@ -268,6 +269,13 @@
 
     function setProgress(value) {
       bar.style.width = Math.max(0, Math.min(100, value)) + '%';
+    }
+
+    function stopLiveTranslation() {
+      if (translationAbort) {
+        translationAbort.abort();
+        translationAbort = null;
+      }
     }
 
     function selectedLabel(select) {
@@ -552,6 +560,7 @@
     }
 
     function reset() {
+      stopLiveTranslation();
       fileInput.value = '';
       currentSource = null;
       fileName.textContent = 'No video selected.';
@@ -567,6 +576,71 @@
       downloadLink.removeAttribute('href');
       srt.value = '';
       meta.textContent = '';
+    }
+
+    async function streamTranslationPreview(source) {
+      if (!source || !source.video_path) return;
+      stopLiveTranslation();
+      const controller = new AbortController();
+      translationAbort = controller;
+      srt.value = '';
+      meta.innerHTML = '<span>Live translation</span><span>Target: ' + selectedLabel(targetLang) + '</span>';
+      setStatus('Transcribing and translating the URL video...');
+      setProgress(82);
+
+      try {
+        const response = await fetch('/api/transcribe-translate-stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({ video_path: source.video_path, ...selectedOptions() })
+        });
+        if (!response.ok || !response.body) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || data.error || 'Live translation failed.');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let pending = '';
+        let segmentCount = 0;
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          pending += decoder.decode(value, { stream: true });
+          const lines = pending.split('\n');
+          pending = lines.pop() || '';
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            const event = JSON.parse(line);
+            if (event.type === 'status') {
+              setStatus(event.message || 'Translating...');
+            } else if (event.type === 'detected') {
+              meta.innerHTML = '<span>Live translation</span><span>Detected: ' + (event.source_language || 'unknown') + '</span><span>Target: ' + selectedLabel(targetLang) + '</span>';
+            } else if (event.type === 'segment') {
+              segmentCount = event.index || (segmentCount + 1);
+              srt.value += (srt.value ? '\n\n' : '') + event.srt_block;
+              srt.scrollTop = srt.scrollHeight;
+              setProgress(Math.min(96, 82 + segmentCount * 2));
+              setStatus('Live translation: ' + segmentCount + ' subtitle segments ready.');
+            } else if (event.type === 'done') {
+              srt.value = event.srt || srt.value;
+              meta.innerHTML = '<span>Live translation complete</span><span>Detected: ' + (event.source_language || 'unknown') + '</span><span>Target: ' + selectedLabel(targetLang) + '</span><span>Segments: ' + ((event.segments || []).length) + '</span>';
+              setStatus('Live translation ready. Review subtitles, edit the source, or start dubbing.', 'ok');
+              setProgress(100);
+            } else if (event.type === 'error') {
+              throw new Error(event.message || 'Live translation failed.');
+            }
+          }
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setStatus(error.message || 'Live translation failed.', 'bad');
+        }
+      } finally {
+        if (translationAbort === controller) translationAbort = null;
+      }
     }
 
     async function processFile(file) {
@@ -610,6 +684,7 @@
       }
 
       fileInput.value = '';
+      stopLiveTranslation();
       fileName.textContent = 'Remote video URL selected.';
       setStatus('Downloading the video for preview...');
       setProgress(8);
@@ -626,6 +701,7 @@
           throw new Error(data.detail || data.error || 'Download failed.');
         }
         showSource(data);
+        streamTranslationPreview(data);
       } catch (error) {
         setStatus(error.message || 'Processing failed.', 'bad');
         setProgress(0);
@@ -669,6 +745,7 @@
         setStatus('Upload or download a source video first.', 'bad');
         return;
       }
+      stopLiveTranslation();
       dubSourceButton.disabled = true;
       setStatus('Dubbing current video and burning subtitles...');
       setProgress(12);

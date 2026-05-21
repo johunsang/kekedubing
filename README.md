@@ -10,11 +10,7 @@ English docs: [README.en.md](README.en.md)
 
 ## Screenshots
 
-![케케더빙 app overview](docs/screenshots/app-overview.png)
-
-![Supported video sites modal](docs/screenshots/supported-sites-modal.png)
-
-## Why
+![케케더빙 app overview](docs/screenshots/app-overview.png)![Supported video sites modal](docs/screenshots/supported-sites-modal.png)## Why
 
 Many dubbing tools depend on cloud APIs, accounts, or paid workflows. **케케더빙** is built around a local server and local models where possible:
 
@@ -29,6 +25,7 @@ Many dubbing tools depend on cloud APIs, accounts, or paid workflows. **케케�
 
 - Upload local videos: `mp4`, `mov`, `m4v`, `webm`, `mkv`
 - Import video URLs from 1,800+ supported sites
+- Show live translated subtitles after a URL video is imported
 - Browse supported sites in a searchable modal
 - Filter sites by category: Social, Video, Music, News, Sports, Learning, Adult, Other
 - Preview the source video before rendering
@@ -63,15 +60,15 @@ Many dubbing tools depend on cloud APIs, accounts, or paid workflows. **케케�
 
 ## Pipeline
 
-1. Upload a file or paste a video URL.
-2. The backend stores the upload or downloads the URL with `yt-dlp`.
-3. The source video appears in the preview panel.
-4. Optionally draw and apply a rectangular blur area.
-5. `faster-whisper` transcribes the source audio.
-6. `Argos Translate` translates text into the target language.
-7. `Supertonic` synthesizes the translated voice.
-8. The dubbed audio is speed-adjusted within a natural range.
-9. `FFmpeg` burns subtitles and muxes the dubbed audio.
+ 1. Upload a file or paste a video URL.
+ 2. The backend stores the upload or downloads the URL with `yt-dlp`.
+ 3. The source video appears in the preview panel.
+ 4. Optionally draw and apply a rectangular blur area.
+ 5. `faster-whisper` transcribes the source audio.
+ 6. `Argos Translate` translates text into the target language.
+ 7. `Supertonic` synthesizes the translated voice.
+ 8. The dubbed audio is speed-adjusted within a natural range.
+ 9. `FFmpeg` burns subtitles and muxes the dubbed audio.
 10. The final MP4 is saved to `data/output/merged`.
 
 ## Quick Start With Docker
