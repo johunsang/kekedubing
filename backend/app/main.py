@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 
 import argostranslate.translate
 import argostranslate.package
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -129,6 +129,7 @@ SUBTITLE_POSITIONS = [
 ]
 SUBTITLE_POSITION_CODES = {item["code"] for item in SUBTITLE_POSITIONS}
 _SUPERTONIC_TTS: Any | None = None
+_WHISPER_MODEL: Any | None = None
 OUTPUT_DIR = DATA_DIR / "output" / "merged"
 TMP_DIR = DATA_DIR / "tmp"
 STORE_PATH = DATA_DIR / "store.json"
@@ -334,6 +335,18 @@ def validate_source_lang(source_lang: str) -> str | None:
     if source_lang not in SUPERTONIC_LANGUAGE_CODES:
         raise HTTPException(status_code=400, detail=f"Unsupported source language: {source_lang}")
     return source_lang
+
+
+def get_whisper_model() -> Any:
+    global _WHISPER_MODEL
+    if _WHISPER_MODEL is None:
+        try:
+            from faster_whisper import WhisperModel
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"faster-whisper is not available: {exc}") from exc
+        model_size = os.getenv("WHISPER_MODEL", "small")
+        _WHISPER_MODEL = WhisperModel(model_size, device="cpu", compute_type="int8")
+    return _WHISPER_MODEL
 
 
 def installed_translation_pairs() -> set[tuple[str, str]]:
@@ -600,14 +613,8 @@ async def transcribe_translate(request: Request) -> dict[str, Any]:
 
     segments: list[dict[str, Any]] = []
     if video_path:
-        try:
-            from faster_whisper import WhisperModel
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"faster-whisper is not available: {exc}") from exc
-
         media = safe_path(str(video_path))
-        model_size = os.getenv("WHISPER_MODEL", "small")
-        model = WhisperModel(model_size, device="cpu", compute_type="int8")
+        model = get_whisper_model()
         raw_segments, info = model.transcribe(
             str(media),
             language=source_lang,
@@ -652,15 +659,8 @@ async def transcribe_translate_stream(request: Request) -> StreamingResponse:
 
     def stream():
         try:
-            from faster_whisper import WhisperModel
-        except Exception as exc:
-            yield send({"type": "error", "message": f"faster-whisper is not available: {exc}"})
-            return
-
-        try:
             yield send({"type": "status", "message": "Transcribing source audio..."})
-            model_size = os.getenv("WHISPER_MODEL", "small")
-            model = WhisperModel(model_size, device="cpu", compute_type="int8")
+            model = get_whisper_model()
             raw_segments, info = model.transcribe(
                 str(media),
                 language=source_lang,
@@ -862,13 +862,7 @@ async def edit_video(request: Request) -> dict[str, Any]:
 
 
 def transcribe_segments(media: Path, target_lang: str, source_lang: str | None = None) -> tuple[str, list[dict[str, Any]]]:
-    try:
-        from faster_whisper import WhisperModel
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"faster-whisper is not available: {exc}") from exc
-
-    model_size = os.getenv("WHISPER_MODEL", "small")
-    model = WhisperModel(model_size, device="cpu", compute_type="int8")
+    model = get_whisper_model()
     requested_lang = source_lang if source_lang and source_lang != "auto" else None
     raw_segments, info = model.transcribe(str(media), language=requested_lang, vad_filter=True, beam_size=5)
     detected_lang = requested_lang or getattr(info, "language", None) or "en"
@@ -1247,12 +1241,18 @@ async def tts(request: Request) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="text required")
 
     with tempfile.TemporaryDirectory(dir=TMP_DIR) as tmp:
+        raw_wav = Path(tmp) / "speech.raw.wav"
         out_wav = Path(tmp) / "speech.wav"
         lang = str(payload.get("lang") or payload.get("target_lang") or os.getenv("DEFAULT_TARGET_LANG", "en"))
         voice = str(payload.get("voice") or os.getenv("SUPERTONIC_VOICE", "M1"))
-        synthesize_tts(text, out_wav, lang=lang, voice=voice)
+        duration = max(0.0, float(payload.get("duration") or 0))
+        synthesize_tts(text, raw_wav, lang=lang, voice=voice)
+        if duration > 0:
+            fit_wav_to_duration(raw_wav, out_wav, duration)
+        else:
+            shutil.copyfile(raw_wav, out_wav)
         encoded = base64.b64encode(out_wav.read_bytes()).decode("ascii")
-    return {"success": True, "audio_data": encoded, "mime_type": "audio/wav", "voice": voice, "lang": lang}
+    return {"success": True, "audio_data": encoded, "mime_type": "audio/wav", "voice": voice, "lang": lang, "duration": duration}
 
 
 @app.post("/api/voice-preview")
@@ -1266,6 +1266,65 @@ async def voice_preview(request: Request) -> dict[str, Any]:
         synthesize_tts(text, out_wav, lang=lang, voice=voice)
         encoded = base64.b64encode(out_wav.read_bytes()).decode("ascii")
     return {"success": True, "audio_data": encoded, "mime_type": "audio/wav", "voice": voice, "lang": lang}
+
+
+@app.post("/api/live-interpret")
+async def live_interpret(
+    audio: UploadFile = File(...),
+    source_lang: str = Form("auto"),
+    target_lang: str = Form("en"),
+    voice: str = Form("M1"),
+    speak: bool = Form(True),
+) -> dict[str, Any]:
+    selected_source_lang = validate_source_lang(source_lang)
+    if target_lang not in SUPERTONIC_LANGUAGE_CODES:
+        raise HTTPException(status_code=400, detail=f"Unsupported target language: {target_lang}")
+    if voice not in SUPERTONIC_VOICE_CODES:
+        raise HTTPException(status_code=400, detail=f"Unsupported Supertonic voice: {voice}")
+
+    suffix = Path(audio.filename or "chunk.webm").suffix.lower() or ".webm"
+    if suffix not in {".webm", ".wav", ".m4a", ".mp3", ".mp4", ".ogg"}:
+        suffix = ".webm"
+    chunk_path = TMP_DIR / f"live_{int(time.time()*1000)}{suffix}"
+    try:
+        content = await audio.read()
+        if len(content) < 512:
+            return {"success": True, "no_speech": True}
+        chunk_path.write_bytes(content)
+
+        model = get_whisper_model()
+        raw_segments, info = model.transcribe(
+            str(chunk_path),
+            language=selected_source_lang,
+            vad_filter=False,
+            beam_size=1,
+            condition_on_previous_text=False,
+        )
+        detected_lang = selected_source_lang or getattr(info, "language", None) or "en"
+        source_parts = [segment.text.strip() for segment in raw_segments if segment.text.strip()]
+        source_text = re.sub(r"\s+", " ", " ".join(source_parts)).strip()
+        if not source_text:
+            return {"success": True, "no_speech": True, "source_language": detected_lang}
+
+        translated = translate_with_pivot(source_text, detected_lang, target_lang)
+        translated = re.sub(r"\s+", " ", translated).strip()
+        response: dict[str, Any] = {
+            "success": True,
+            "source_language": detected_lang,
+            "target_language": target_lang,
+            "source_text": source_text,
+            "translated_text": translated,
+            "voice": voice,
+        }
+        if speak and translated:
+            with tempfile.TemporaryDirectory(dir=TMP_DIR) as tmp:
+                out_wav = Path(tmp) / "interpret.wav"
+                synthesize_tts(translated, out_wav, lang=target_lang, voice=voice)
+                response["audio_data"] = base64.b64encode(out_wav.read_bytes()).decode("ascii")
+                response["mime_type"] = "audio/wav"
+        return response
+    finally:
+        chunk_path.unlink(missing_ok=True)
 
 
 @app.post("/api/bgm")

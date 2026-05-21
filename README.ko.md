@@ -17,6 +17,8 @@ English docs: [README.en.md](README.en.md)
 - 로컬 영상 업로드
 - 지원 사이트 영상 URL 가져오기
 - URL 영상 가져오기 후 실시간 번역 자막 표시
+- Live Interpreter 탭에서 URL 영상 스트림 번역, 동시자막, 통역 음성 조각 재생
+- 원본 세그먼트 길이에 맞춰 라이브 더빙 음성 속도 자동 조정
 - 지원 사이트 1,800개 이상 검색 모달
 - 사이트 카테고리 필터: Social, Video, Music, News, Sports, Learning, Adult, Other
 - 원본/다운로드 영상 미리보기

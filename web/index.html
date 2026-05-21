@@ -25,6 +25,12 @@
     body { padding: 28px; }
     .shell { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 420px 1fr; gap: 18px; align-items: start; }
     header { max-width: 1180px; margin: 0 auto 20px; display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+    .tabs { max-width: 1180px; margin: 0 auto 18px; display: flex; gap: 8px; }
+    .tab-button { background: #eef1f6; color: var(--text); }
+    .tab-button.active { background: var(--accent); color: #fff; }
+    .tab-panel[hidden] { display: none; }
+    .control[hidden], .live-actions[hidden] { display: none; }
+    .live-shell { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 360px 1fr; gap: 18px; align-items: start; }
     h1 { margin: 0; font-size: 32px; letter-spacing: 0; }
     .tagline { color: var(--muted); font-size: 14px; margin-top: 4px; }
     .limit { color: var(--muted); font-size: 13px; }
@@ -95,9 +101,16 @@
     textarea { width: 100%; min-height: 220px; margin-top: 14px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 12px; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); background: #fbfcfe; }
     .empty { min-height: 520px; display: grid; place-items: center; color: var(--muted); border: 1px solid var(--line); border-radius: 8px; background: #fbfcfe; text-align: center; padding: 28px; }
     .meta { margin-top: 12px; font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+    .live-meter { height: 10px; border-radius: 999px; background: #e9edf4; overflow: hidden; }
+    .live-level { height: 100%; width: 0%; background: linear-gradient(90deg, #17a2b8, var(--accent)); transition: width .12s; }
+    .live-caption { min-height: 180px; display: grid; gap: 14px; align-content: center; border: 1px solid var(--line); border-radius: 8px; background: #101827; color: #fff; padding: 22px; }
+    .live-source { color: #aeb8c8; font-size: 16px; line-height: 1.45; }
+    .live-translation { font-size: 30px; line-height: 1.2; font-weight: 900; letter-spacing: 0; }
+    .live-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 800; }
     @media (max-width: 900px) {
       body { padding: 16px; }
-      header, .shell { display: block; }
+      header, .shell, .live-shell { display: block; }
       .panel { margin-bottom: 16px; }
     }
   </style>
@@ -111,7 +124,12 @@
     <div id="uploadLimit" class="limit">No upload size limit</div>
   </header>
 
-  <main class="shell">
+  <nav class="tabs" aria-label="Modes">
+    <button type="button" class="tab-button active" data-tab="videoTab">Video Dubbing</button>
+    <button type="button" class="tab-button" data-tab="liveTab">Live Interpreter</button>
+  </nav>
+
+  <main id="videoTab" class="shell tab-panel">
     <section class="panel">
       <label id="dropZone" class="upload-zone" for="fileInput">
         <div class="upload-icon">↑</div>
@@ -200,6 +218,62 @@
     </section>
   </main>
 
+  <main id="liveTab" class="live-shell tab-panel" hidden>
+    <section class="panel">
+      <div class="control">
+        <label for="liveVideoUrl">Video URL</label>
+        <div class="url-control">
+          <input id="liveVideoUrl" type="url" placeholder="Paste a YouTube or supported video URL">
+          <button type="button" id="liveUrlButton">Live dub URL</button>
+        </div>
+      </div>
+      <div class="control">
+        <label for="liveSourceLang">Source language</label>
+        <select id="liveSourceLang"></select>
+      </div>
+      <div class="control">
+        <label for="liveTargetLang">Target language</label>
+        <div class="inline-control">
+          <select id="liveTargetLang"></select>
+          <button type="button" id="liveDownloadResourcesButton" class="secondary">Download</button>
+        </div>
+      </div>
+      <div class="control">
+        <label for="liveVoiceSelect">Interpreter voice</label>
+        <select id="liveVoiceSelect"></select>
+      </div>
+      <div class="control" hidden>
+        <label class="checkbox-row">
+          <input id="liveSpeak" type="checkbox" checked>
+          Play interpreted voice
+        </label>
+      </div>
+      <div class="live-actions" hidden>
+        <button type="button" id="liveStartButton">Start live</button>
+        <button type="button" id="liveStopButton" class="secondary" disabled>Stop</button>
+        <button type="button" id="liveClearButton" class="secondary">Clear</button>
+      </div>
+      <div class="control" hidden>
+        <label>Microphone</label>
+        <div class="live-meter"><div id="liveLevel" class="live-level"></div></div>
+      </div>
+      <div id="liveStatus" class="status">Live interpreter is stopped.</div>
+    </section>
+
+    <section class="panel">
+      <div class="result-head">
+        <h2>Live Captions</h2>
+        <div id="liveMeta" class="meta"></div>
+      </div>
+      <video id="liveVideo" controls playsinline muted style="display:none;"></video>
+      <div class="live-caption">
+        <div id="liveOriginal" class="live-source">Original speech will appear here.</div>
+        <div id="liveTranslated" class="live-translation">Translated captions will appear here.</div>
+      </div>
+      <textarea id="liveTranscript" placeholder="Live interpretation history will appear here." spellcheck="false"></textarea>
+    </section>
+  </main>
+
   <div id="siteModal" class="modal" aria-hidden="true">
     <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="siteModalTitle">
       <div class="modal-head">
@@ -218,7 +292,17 @@
     let previewAudio = null;
     let currentSource = null;
     let translationAbort = null;
+    let liveStream = null;
+    let liveRecorder = null;
+    let liveAudioContext = null;
+    let liveAnalyser = null;
+    let liveMeterFrame = null;
+    let liveBusy = false;
+    let liveUrlAbort = null;
+    let liveAudioChain = Promise.resolve();
     let languageResources = { source_ready: [], target_ready: [] };
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabPanels = document.querySelectorAll('.tab-panel');
     const fileInput = document.getElementById('fileInput');
     const dropZone = document.getElementById('dropZone');
     const pickButton = document.getElementById('pickButton');
@@ -258,6 +342,23 @@
     const downloadLink = document.getElementById('downloadLink');
     const openOutputButton = document.getElementById('openOutputButton');
     const resetButton = document.getElementById('resetButton');
+    const liveSourceLang = document.getElementById('liveSourceLang');
+    const liveTargetLang = document.getElementById('liveTargetLang');
+    const liveVoiceSelect = document.getElementById('liveVoiceSelect');
+    const liveDownloadResourcesButton = document.getElementById('liveDownloadResourcesButton');
+    const liveVideoUrl = document.getElementById('liveVideoUrl');
+    const liveUrlButton = document.getElementById('liveUrlButton');
+    const liveSpeak = document.getElementById('liveSpeak');
+    const liveStartButton = document.getElementById('liveStartButton');
+    const liveStopButton = document.getElementById('liveStopButton');
+    const liveClearButton = document.getElementById('liveClearButton');
+    const liveStatus = document.getElementById('liveStatus');
+    const liveLevel = document.getElementById('liveLevel');
+    const liveVideo = document.getElementById('liveVideo');
+    const liveOriginal = document.getElementById('liveOriginal');
+    const liveTranslated = document.getElementById('liveTranslated');
+    const liveTranscript = document.getElementById('liveTranscript');
+    const liveMeta = document.getElementById('liveMeta');
     let allSites = [];
     let activeCategory = 'All';
     const categories = ['All', 'Social', 'Video', 'Music', 'News', 'Sports', 'Learning', 'Adult', 'Other'];
@@ -271,11 +372,33 @@
       bar.style.width = Math.max(0, Math.min(100, value)) + '%';
     }
 
+    function setLiveStatus(message, type) {
+      liveStatus.textContent = message;
+      liveStatus.className = 'status' + (type ? ' ' + type : '');
+    }
+
     function stopLiveTranslation() {
       if (translationAbort) {
         translationAbort.abort();
         translationAbort = null;
       }
+    }
+
+    function stopLiveUrlDubbing() {
+      if (liveUrlAbort) {
+        liveUrlAbort.abort();
+        liveUrlAbort = null;
+      }
+      liveUrlButton.disabled = false;
+      if (!liveRecorder || liveRecorder.state === 'inactive') liveStopButton.disabled = true;
+      if (liveVideo.src) liveVideo.pause();
+    }
+
+    function selectTab(tabId) {
+      tabButtons.forEach((button) => button.classList.toggle('active', button.dataset.tab === tabId));
+      tabPanels.forEach((panel) => {
+        panel.hidden = panel.id !== tabId;
+      });
     }
 
     function selectedLabel(select) {
@@ -292,6 +415,24 @@
         if (item.code === selected) option.selected = true;
         select.appendChild(option);
       });
+    }
+
+    function selectItems(select) {
+      return Array.from(select.options).map((option) => ({
+        code: option.value,
+        label: option.textContent.replace(' (Installed)', '').replace(' - ' + option.value, '')
+      }));
+    }
+
+    function refreshLanguageResourceLabels() {
+      const sourceValue = sourceLang.value;
+      const targetValue = targetLang.value;
+      const liveSourceValue = liveSourceLang.value;
+      const liveTargetValue = liveTargetLang.value;
+      fillSelect(sourceLang, selectItems(sourceLang), sourceValue, languageResources.source_ready);
+      fillSelect(targetLang, selectItems(targetLang), targetValue, languageResources.target_ready);
+      fillSelect(liveSourceLang, selectItems(liveSourceLang), liveSourceValue, languageResources.source_ready);
+      fillSelect(liveTargetLang, selectItems(liveTargetLang), liveTargetValue, languageResources.target_ready);
     }
 
     function updateSubtitlePreview() {
@@ -420,6 +561,9 @@
         fillSelect(sourceLang, config.source_languages || [], config.default_source_lang || 'auto', languageResources.source_ready);
         fillSelect(targetLang, config.target_languages || [], config.default_target_lang || 'en', languageResources.target_ready);
         fillSelect(voiceSelect, config.voices || [], config.default_voice || 'M1');
+        fillSelect(liveSourceLang, config.source_languages || [], config.default_source_lang || 'auto', languageResources.source_ready);
+        fillSelect(liveTargetLang, config.target_languages || [], config.default_target_lang || 'en', languageResources.target_ready);
+        fillSelect(liveVoiceSelect, config.voices || [], config.default_voice || 'M1');
         fillSelect(subtitleStyle, config.subtitle_styles || [], config.default_subtitle_style || 'bold');
         fillSelect(subtitlePosition, config.subtitle_positions || [], config.default_subtitle_position || 'bottom');
         subtitleSize.value = config.default_subtitle_size || 100;
@@ -429,6 +573,9 @@
         fillSelect(sourceLang, [{ code: 'auto', label: 'Auto detect' }], 'auto', ['auto']);
         fillSelect(targetLang, [{ code: 'en', label: 'English' }], 'en', ['en']);
         fillSelect(voiceSelect, [{ code: 'M1', label: 'Male 1' }], 'M1');
+        fillSelect(liveSourceLang, [{ code: 'auto', label: 'Auto detect' }], 'auto', ['auto']);
+        fillSelect(liveTargetLang, [{ code: 'en', label: 'English' }], 'en', ['en']);
+        fillSelect(liveVoiceSelect, [{ code: 'M1', label: 'Male 1' }], 'M1');
         fillSelect(subtitleStyle, [{ code: 'bold', label: 'Bold outline' }], 'bold');
         fillSelect(subtitlePosition, [{ code: 'bottom', label: 'Bottom' }], 'bottom');
         subtitleSize.value = 100;
@@ -769,6 +916,244 @@
       }
     }
 
+    function liveMimeType() {
+      const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+      return candidates.find((type) => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || '';
+    }
+
+    function updateLiveMeter() {
+      if (!liveAnalyser) return;
+      const data = new Uint8Array(liveAnalyser.fftSize);
+      liveAnalyser.getByteTimeDomainData(data);
+      let peak = 0;
+      data.forEach((value) => {
+        peak = Math.max(peak, Math.abs(value - 128));
+      });
+      liveLevel.style.width = Math.min(100, peak * 1.7) + '%';
+      liveMeterFrame = requestAnimationFrame(updateLiveMeter);
+    }
+
+    function playInterpretedAudio(data) {
+      if (!data.audio_data || !liveSpeak.checked) return;
+      liveAudioChain = liveAudioChain.then(async () => {
+        const audio = new Audio('data:' + data.mime_type + ';base64,' + data.audio_data);
+        await audio.play();
+      }).catch(() => {});
+    }
+
+    function speakLiveTranslation(text, duration) {
+      const clean = (text || '').trim();
+      if (!clean || !liveSpeak.checked) return;
+      const seconds = Math.max(0.35, Number(duration || 0));
+      liveAudioChain = liveAudioChain.then(async () => {
+        const response = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: clean,
+            lang: liveTargetLang.value,
+            voice: liveVoiceSelect.value,
+            duration: seconds
+          })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.detail || 'TTS failed.');
+        const audio = new Audio('data:' + data.mime_type + ';base64,' + data.audio_data);
+        await audio.play();
+      }).catch(() => {});
+    }
+
+    async function liveDubUrl() {
+      const url = liveVideoUrl.value.trim();
+      if (!url) {
+        setLiveStatus('Paste a video URL first.', 'bad');
+        return;
+      }
+
+      selectTab('liveTab');
+      stopLiveInterpreter();
+      stopLiveUrlDubbing();
+      clearLiveInterpreter();
+      liveUrlButton.disabled = true;
+      liveStopButton.disabled = false;
+      liveUrlAbort = new AbortController();
+      setLiveStatus('Downloading URL video...');
+
+      try {
+        const downloadResponse = await fetch('/api/import-video-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: liveUrlAbort.signal,
+          body: JSON.stringify({ url })
+        });
+        const source = await downloadResponse.json();
+        if (!downloadResponse.ok || !source.success) {
+          throw new Error(source.detail || source.error || 'URL download failed.');
+        }
+
+        liveVideo.src = source.play_url;
+        liveVideo.muted = true;
+        liveVideo.volume = 0;
+        liveVideo.style.display = 'block';
+        liveVideo.play().catch(() => {});
+        setLiveStatus('Streaming translation and dubbing chunks...');
+
+        const streamResponse = await fetch('/api/transcribe-translate-stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: liveUrlAbort.signal,
+          body: JSON.stringify({
+            video_path: source.video_path,
+            source_lang: liveSourceLang.value,
+            target_lang: liveTargetLang.value
+          })
+        });
+        if (!streamResponse.ok || !streamResponse.body) {
+          const data = await streamResponse.json().catch(() => ({}));
+          throw new Error(data.detail || data.error || 'Live URL stream failed.');
+        }
+
+        const reader = streamResponse.body.getReader();
+        const decoder = new TextDecoder();
+        let pending = '';
+        let segmentCount = 0;
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          pending += decoder.decode(value, { stream: true });
+          const lines = pending.split('\n');
+          pending = lines.pop() || '';
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            const event = JSON.parse(line);
+            if (event.type === 'status') {
+              setLiveStatus(event.message || 'Streaming...');
+            } else if (event.type === 'detected') {
+              liveMeta.innerHTML = '<span>Detected: ' + (event.source_language || 'unknown') + '</span><span>Target: ' + selectedLabel(liveTargetLang) + '</span><span>Mode: URL stream</span>';
+            } else if (event.type === 'segment') {
+              segmentCount = event.index || (segmentCount + 1);
+              const segment = event.segment || {};
+              liveOriginal.textContent = segment.source_text || '';
+              liveTranslated.textContent = segment.text || '';
+              liveTranscript.value += (liveTranscript.value ? '\n\n' : '') + '[' + segmentCount + '] ' + (segment.source_text || '') + '\n' + (segment.text || '');
+              liveTranscript.scrollTop = liveTranscript.scrollHeight;
+              speakLiveTranslation(segment.text || '', Math.max(0.35, Number(segment.end || 0) - Number(segment.start || 0)));
+              setLiveStatus('URL live dubbing: ' + segmentCount + ' chunks translated.', 'ok');
+            } else if (event.type === 'done') {
+              liveMeta.innerHTML = '<span>URL live dubbing complete</span><span>Detected: ' + (event.source_language || 'unknown') + '</span><span>Segments: ' + ((event.segments || []).length) + '</span>';
+              setLiveStatus('URL live dubbing complete.', 'ok');
+            } else if (event.type === 'error') {
+              throw new Error(event.message || 'Live URL stream failed.');
+            }
+          }
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') setLiveStatus(error.message || 'Live URL dubbing failed.', 'bad');
+      } finally {
+        liveUrlAbort = null;
+        liveUrlButton.disabled = false;
+        if (!liveRecorder || liveRecorder.state === 'inactive') liveStopButton.disabled = true;
+      }
+    }
+
+    async function processLiveChunk(blob) {
+      if (!blob || blob.size < 512 || liveBusy) return;
+      liveBusy = true;
+      const form = new FormData();
+      const extension = (blob.type.includes('mp4') ? 'm4a' : 'webm');
+      form.append('audio', blob, 'live.' + extension);
+      form.append('source_lang', liveSourceLang.value);
+      form.append('target_lang', liveTargetLang.value);
+      form.append('voice', liveVoiceSelect.value);
+      form.append('speak', liveSpeak.checked ? 'true' : 'false');
+
+      try {
+        setLiveStatus('Interpreting...');
+        const response = await fetch('/api/live-interpret', {
+          method: 'POST',
+          body: form
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.detail || data.error || 'Live interpretation failed.');
+        }
+        if (data.no_speech) {
+          setLiveStatus('Listening...');
+          return;
+        }
+        liveOriginal.textContent = data.source_text || '';
+        liveTranslated.textContent = data.translated_text || '';
+        liveMeta.innerHTML = '<span>Detected: ' + (data.source_language || 'unknown') + '</span><span>Target: ' + selectedLabel(liveTargetLang) + '</span><span>Voice: ' + selectedLabel(liveVoiceSelect) + '</span>';
+        liveTranscript.value += (liveTranscript.value ? '\n\n' : '') + '[' + new Date().toLocaleTimeString() + '] ' + (data.source_text || '') + '\n' + (data.translated_text || '');
+        liveTranscript.scrollTop = liveTranscript.scrollHeight;
+        playInterpretedAudio(data);
+        setLiveStatus('Listening and interpreting.', 'ok');
+      } catch (error) {
+        setLiveStatus(error.message || 'Live interpretation failed.', 'bad');
+      } finally {
+        liveBusy = false;
+      }
+    }
+
+    async function startLiveInterpreter() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+        setLiveStatus('This browser does not support microphone recording.', 'bad');
+        return;
+      }
+      selectTab('liveTab');
+      stopLiveUrlDubbing();
+      liveStartButton.disabled = true;
+      liveStopButton.disabled = false;
+      setLiveStatus('Requesting microphone...');
+      try {
+        liveStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        liveAudioContext = new AudioContext();
+        liveAnalyser = liveAudioContext.createAnalyser();
+        liveAnalyser.fftSize = 256;
+        liveAudioContext.createMediaStreamSource(liveStream).connect(liveAnalyser);
+        updateLiveMeter();
+
+        const options = {};
+        const mimeType = liveMimeType();
+        if (mimeType) options.mimeType = mimeType;
+        liveRecorder = new MediaRecorder(liveStream, options);
+        liveRecorder.addEventListener('dataavailable', (event) => processLiveChunk(event.data));
+        liveRecorder.addEventListener('stop', () => {
+          liveStartButton.disabled = false;
+          liveStopButton.disabled = true;
+        });
+        liveRecorder.start(4500);
+        setLiveStatus('Listening...', 'ok');
+      } catch (error) {
+        stopLiveInterpreter();
+        setLiveStatus(error.message || 'Could not start microphone.', 'bad');
+      }
+    }
+
+    function stopLiveInterpreter() {
+      if (liveRecorder && liveRecorder.state !== 'inactive') liveRecorder.stop();
+      liveRecorder = null;
+      if (liveStream) liveStream.getTracks().forEach((track) => track.stop());
+      liveStream = null;
+      if (liveMeterFrame) cancelAnimationFrame(liveMeterFrame);
+      liveMeterFrame = null;
+      liveAnalyser = null;
+      if (liveAudioContext) liveAudioContext.close().catch(() => {});
+      liveAudioContext = null;
+      liveLevel.style.width = '0%';
+      liveStartButton.disabled = false;
+      liveStopButton.disabled = true;
+      setLiveStatus('Live interpreter is stopped.');
+    }
+
+    function clearLiveInterpreter() {
+      liveOriginal.textContent = 'Original speech will appear here.';
+      liveTranslated.textContent = 'Translated captions will appear here.';
+      liveTranscript.value = '';
+      liveMeta.textContent = '';
+      setLiveStatus('Live interpreter is stopped.');
+    }
+
     async function previewVoice() {
       previewButton.disabled = true;
       setStatus('Generating voice preview...');
@@ -810,16 +1195,16 @@
       }
     }
 
-    async function downloadLanguageResources() {
-      downloadResourcesButton.disabled = true;
-      setStatus('Downloading language resources. This can take a while the first time...');
+    async function downloadLanguageResourcesFor(sourceSelect, targetSelect, button, report) {
+      button.disabled = true;
+      report('Downloading language resources and checking subtitle font. This can take a while the first time...');
       try {
         const response = await fetch('/api/download-language-resources', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            source_lang: sourceLang.value,
-            target_lang: targetLang.value
+            source_lang: sourceSelect.value,
+            target_lang: targetSelect.value
           })
         });
         const data = await response.json();
@@ -830,25 +1215,41 @@
         const pairs = (data.translation_pairs || []).map((item) => item.source + '->' + item.target).join(', ') || 'already installed';
         if (data.language_resources) {
           languageResources = data.language_resources;
-          const sourceValue = sourceLang.value;
-          const targetValue = targetLang.value;
-          fillSelect(sourceLang, Array.from(sourceLang.options).map((option) => ({ code: option.value, label: option.textContent.replace(' (Installed)', '').replace(' - ' + option.value, '') })), sourceValue, languageResources.source_ready);
-          fillSelect(targetLang, Array.from(targetLang.options).map((option) => ({ code: option.value, label: option.textContent.replace(' (Installed)', '').replace(' - ' + option.value, '') })), targetValue, languageResources.target_ready);
+          refreshLanguageResourceLabels();
         }
-        setStatus('Language resources ready: ' + pairs + '. Font: ' + data.font, 'ok');
+        report('Language resources ready: ' + pairs + '. Font: ' + data.font, 'ok');
       } catch (error) {
-        setStatus(error.message || 'Language resource download failed.', 'bad');
+        report(error.message || 'Language resource download failed.', 'bad');
       } finally {
-        downloadResourcesButton.disabled = false;
+        button.disabled = false;
       }
     }
 
+    async function downloadLanguageResources() {
+      return downloadLanguageResourcesFor(sourceLang, targetLang, downloadResourcesButton, setStatus);
+    }
+
+    async function downloadLiveLanguageResources() {
+      return downloadLanguageResourcesFor(liveSourceLang, liveTargetLang, liveDownloadResourcesButton, setLiveStatus);
+    }
+
+    tabButtons.forEach((button) => {
+      button.addEventListener('click', () => selectTab(button.dataset.tab));
+    });
+    liveUrlButton.addEventListener('click', liveDubUrl);
+    liveStartButton.addEventListener('click', startLiveInterpreter);
+    liveStopButton.addEventListener('click', () => {
+      stopLiveInterpreter();
+      stopLiveUrlDubbing();
+    });
+    liveClearButton.addEventListener('click', clearLiveInterpreter);
     pickButton.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', () => processFile(fileInput.files[0]));
     urlButton.addEventListener('click', processUrl);
     resetButton.addEventListener('click', reset);
     openOutputButton.addEventListener('click', openOutputFolder);
     downloadResourcesButton.addEventListener('click', downloadLanguageResources);
+    liveDownloadResourcesButton.addEventListener('click', downloadLiveLanguageResources);
     previewButton.addEventListener('click', previewVoice);
     subtitleStyle.addEventListener('change', updateSubtitlePreview);
     subtitlePosition.addEventListener('change', updateSubtitlePreview);

@@ -10,7 +10,7 @@ English docs: [README.en.md](README.en.md)
 
 ## Screenshots
 
-![케케더빙 app overview](docs/screenshots/app-overview.png)![Supported video sites modal](docs/screenshots/supported-sites-modal.png)## Why
+![케케더빙 app overview](docs/screenshots/app-overview.png)![Supported video sites modal](docs/screenshots/supported-sites-modal.png)\## Why
 
 Many dubbing tools depend on cloud APIs, accounts, or paid workflows. **케케더빙** is built around a local server and local models where possible:
 
@@ -26,6 +26,8 @@ Many dubbing tools depend on cloud APIs, accounts, or paid workflows. **케케�
 - Upload local videos: `mp4`, `mov`, `m4v`, `webm`, `mkv`
 - Import video URLs from 1,800+ supported sites
 - Show live translated subtitles after a URL video is imported
+- Use the Live Interpreter tab to stream URL video translation, captions, and interpreted voice chunks
+- Fit live dubbed voice chunks to each source segment duration
 - Browse supported sites in a searchable modal
 - Filter sites by category: Social, Video, Music, News, Sports, Learning, Adult, Other
 - Preview the source video before rendering
