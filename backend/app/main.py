@@ -671,24 +671,68 @@ async def transcribe_translate_stream(request: Request) -> StreamingResponse:
             yield send({"type": "detected", "source_language": detected_lang, "target_language": target_lang})
 
             entries: list[dict[str, Any]] = []
-            for index, segment in enumerate(raw_segments, start=1):
-                source_text = segment.text.strip()
-                if not source_text:
-                    continue
+            pending: list[dict[str, Any]] = []
+
+            def should_flush_group() -> bool:
+                if not pending:
+                    return False
+                text = " ".join(str(item["source_text"]) for item in pending)
+                duration = float(pending[-1]["end"]) - float(pending[0]["start"])
+                if duration >= float(os.getenv("LIVE_DUB_MAX_SECONDS", "7.0")):
+                    return True
+                if len(text) >= int(os.getenv("LIVE_DUB_MAX_CHARS", "220")):
+                    return True
+                if duration >= float(os.getenv("LIVE_DUB_MIN_SECONDS", "3.0")) and re.search(r"[.!?。！？]$", text):
+                    return True
+                return False
+
+            def flush_group() -> dict[str, Any] | None:
+                if not pending:
+                    return None
+                source_text = re.sub(r"\s+", " ", " ".join(str(item["source_text"]) for item in pending)).strip()
                 translated = translate_with_pivot(source_text, detected_lang, target_lang)
                 translated = re.sub(r"\s+", " ", translated).strip()
                 entry = {
-                    "start": float(segment.start),
-                    "end": float(segment.end),
+                    "start": float(pending[0]["start"]),
+                    "end": float(pending[-1]["end"]),
                     "source_text": source_text,
                     "text": translated,
                     "language": target_lang,
                 }
+                pending.clear()
+                return entry
+
+            for segment in raw_segments:
+                source_text = segment.text.strip()
+                if not source_text:
+                    continue
+                pending.append(
+                    {
+                        "start": float(segment.start),
+                        "end": float(segment.end),
+                        "source_text": source_text,
+                    }
+                )
+                if not should_flush_group():
+                    continue
+                entry = flush_group()
+                if not entry:
+                    continue
                 entries.append(entry)
                 srt_block = (
                     f"{len(entries)}\n"
                     f"{fmt_srt_time(entry['start'])} --> {fmt_srt_time(entry['end'])}\n"
-                    f"{wrap_subtitle_text(translated)}"
+                    f"{wrap_subtitle_text(str(entry['text']))}"
+                )
+                yield send({"type": "segment", "index": len(entries), "segment": entry, "srt_block": srt_block})
+
+            entry = flush_group()
+            if entry:
+                entries.append(entry)
+                srt_block = (
+                    f"{len(entries)}\n"
+                    f"{fmt_srt_time(entry['start'])} --> {fmt_srt_time(entry['end'])}\n"
+                    f"{wrap_subtitle_text(str(entry['text']))}"
                 )
                 yield send({"type": "segment", "index": len(entries), "segment": entry, "srt_block": srt_block})
 
@@ -962,6 +1006,7 @@ def fit_wav_to_duration(input_wav: Path, output_wav: Path, target_seconds: float
         return
 
     speed = max(MIN_DUB_SPEED, min(MAX_DUB_SPEED, current_seconds / max(0.05, target_seconds * 0.96)))
+    audio_filter = f"{atempo_chain(speed)},apad,atrim=0:{target_seconds:.3f},asetpts=N/SR/TB"
     run_command(
         [
             "ffmpeg",
@@ -969,7 +1014,7 @@ def fit_wav_to_duration(input_wav: Path, output_wav: Path, target_seconds: float
             "-i",
             str(input_wav),
             "-filter:a",
-            atempo_chain(speed),
+            audio_filter,
             "-ar",
             "24000",
             "-ac",

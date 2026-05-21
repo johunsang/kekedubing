@@ -10,7 +10,11 @@ English docs: [README.en.md](README.en.md)
 
 ## Screenshots
 
-![케케더빙 app overview](docs/screenshots/app-overview.png)![Supported video sites modal](docs/screenshots/supported-sites-modal.png)\## Why
+![케케더빙 app overview](docs/screenshots/app-overview.png)
+
+![Supported video sites modal](docs/screenshots/supported-sites-modal.png)
+
+## Why
 
 Many dubbing tools depend on cloud APIs, accounts, or paid workflows. **케케더빙** is built around a local server and local models where possible:
 
@@ -72,6 +76,28 @@ Many dubbing tools depend on cloud APIs, accounts, or paid workflows. **케케�
  8. The dubbed audio is speed-adjusted within a natural range.
  9. `FFmpeg` burns subtitles and muxes the dubbed audio.
 10. The final MP4 is saved to `data/output/merged`.
+
+## Live Interpreter URL Dubbing
+
+The `Live Interpreter` tab is for URL-based live dubbing, not microphone interpretation.
+
+1. Paste a YouTube or supported video URL.
+2. Choose source language, target language, and Supertonic voice.
+3. Click `Download` to install or verify local translation resources and subtitle font support.
+4. Click `Live dub URL`.
+5. The source video plays muted.
+6. Whisper segments are grouped into longer translation chunks so English sentences are less fragmented.
+7. Each chunk is translated, synthesized, padded or trimmed to the exact target duration, and played with the matching muted video segment.
+8. Captions are shown only when the synced dubbed audio starts, so text, voice, and video move together.
+
+Live URL dubbing uses:
+
+- `yt-dlp` to import the source video
+- `faster-whisper` to transcribe
+- `Argos Translate` to translate locally
+- `Supertonic` to synthesize voice
+- `FFmpeg` `atempo`, `apad`, and `atrim` filters to fit voice length
+- a muted video preview with adjustable playback speed
 
 ## Quick Start With Docker
 
@@ -152,6 +178,9 @@ You can tune those values with environment variables.
 | `MAX_DUB_SPEED` | `1.75` | maximum dub tempo |
 | `SUPERTONIC_STEPS` | `8` | Supertonic synthesis steps |
 | `SUPERTONIC_SPEED` | `1.05` | Supertonic base speech speed |
+| `LIVE_DUB_MIN_SECONDS` | `3.0` | minimum grouped live-dub chunk length before punctuation flush |
+| `LIVE_DUB_MAX_SECONDS` | `7.0` | maximum grouped live-dub chunk length |
+| `LIVE_DUB_MAX_CHARS` | `220` | maximum grouped live-dub source text length |
 
 ## Output
 

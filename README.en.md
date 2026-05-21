@@ -61,6 +61,21 @@ The project is designed to avoid external APIs where possible and run with local
 9. FFmpeg burns subtitles and muxes the dubbed audio
 10. The final MP4 is saved and can be downloaded
 
+## Live Interpreter URL Dubbing
+
+The `Live Interpreter` tab is for URL video live dubbing.
+
+1. Paste a YouTube or supported video URL.
+2. Choose source language, target language, and Supertonic voice.
+3. Click `Download` to install or verify local translation resources and font support.
+4. Click `Live dub URL`.
+5. The source video plays muted.
+6. Short Whisper segments are grouped into longer 3-7 second translation chunks.
+7. Each chunk is translated, synthesized, and fitted to the target duration with FFmpeg padding and trimming.
+8. The matching muted video segment, dubbed audio, and caption text start together.
+
+This mode uses local `yt-dlp`, `faster-whisper`, `Argos Translate`, `Supertonic`, and `FFmpeg`.
+
 ## Local Models And Resources
 
 Translation models are installed on demand. Use the `Download` button beside Target language to install the Argos models needed for the selected source and target languages.
@@ -121,6 +136,9 @@ Set-ExecutionPolicy -Scope Process Bypass
 | `SUBTITLE_FONT` | `Noto Sans` | Default subtitle font |
 | `MIN_DUB_SPEED` | `0.85` | Minimum dub speed |
 | `MAX_DUB_SPEED` | `1.75` | Maximum dub speed |
+| `LIVE_DUB_MIN_SECONDS` | `3.0` | Minimum live-dub grouped chunk length before punctuation flush |
+| `LIVE_DUB_MAX_SECONDS` | `7.0` | Maximum live-dub grouped chunk length |
+| `LIVE_DUB_MAX_CHARS` | `220` | Maximum live-dub grouped source text length |
 
 ## Output Folder
 

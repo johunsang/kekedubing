@@ -242,6 +242,10 @@
         <label for="liveVoiceSelect">Interpreter voice</label>
         <select id="liveVoiceSelect"></select>
       </div>
+      <div class="control">
+        <label for="liveVideoSpeed">Video speed</label>
+        <input id="liveVideoSpeed" type="range" min="60" max="110" step="5" value="85">
+      </div>
       <div class="control" hidden>
         <label class="checkbox-row">
           <input id="liveSpeak" type="checkbox" checked>
@@ -300,6 +304,8 @@
     let liveBusy = false;
     let liveUrlAbort = null;
     let liveAudioChain = Promise.resolve();
+    let liveCurrentAudio = null;
+    let liveAudioGeneration = 0;
     let languageResources = { source_ready: [], target_ready: [] };
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabPanels = document.querySelectorAll('.tab-panel');
@@ -345,6 +351,7 @@
     const liveSourceLang = document.getElementById('liveSourceLang');
     const liveTargetLang = document.getElementById('liveTargetLang');
     const liveVoiceSelect = document.getElementById('liveVoiceSelect');
+    const liveVideoSpeed = document.getElementById('liveVideoSpeed');
     const liveDownloadResourcesButton = document.getElementById('liveDownloadResourcesButton');
     const liveVideoUrl = document.getElementById('liveVideoUrl');
     const liveUrlButton = document.getElementById('liveUrlButton');
@@ -389,9 +396,19 @@
         liveUrlAbort.abort();
         liveUrlAbort = null;
       }
+      liveAudioGeneration += 1;
+      liveAudioChain = Promise.resolve();
+      if (liveCurrentAudio) {
+        liveCurrentAudio.pause();
+        liveCurrentAudio.removeAttribute('src');
+        liveCurrentAudio = null;
+      }
       liveUrlButton.disabled = false;
       if (!liveRecorder || liveRecorder.state === 'inactive') liveStopButton.disabled = true;
-      if (liveVideo.src) liveVideo.pause();
+      if (liveVideo.src) {
+        liveVideo.pause();
+        liveVideo.playbackRate = 1;
+      }
     }
 
     function selectTab(tabId) {
@@ -935,17 +952,48 @@
 
     function playInterpretedAudio(data) {
       if (!data.audio_data || !liveSpeak.checked) return;
+      const generation = liveAudioGeneration;
       liveAudioChain = liveAudioChain.then(async () => {
+        if (generation !== liveAudioGeneration) return;
+        if (liveCurrentAudio) {
+          liveCurrentAudio.pause();
+          liveCurrentAudio.removeAttribute('src');
+        }
         const audio = new Audio('data:' + data.mime_type + ';base64,' + data.audio_data);
+        liveCurrentAudio = audio;
         await audio.play();
       }).catch(() => {});
     }
 
-    function speakLiveTranslation(text, duration) {
+    function waitForSegmentDuration(audio, seconds, generation) {
+      return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          if (generation === liveAudioGeneration) {
+            audio.pause();
+            liveVideo.pause();
+          }
+          resolve();
+        }, Math.max(350, seconds * 1000));
+        audio.addEventListener('error', () => {
+          clearTimeout(timer);
+          resolve();
+        }, { once: true });
+      });
+    }
+
+    function syncedVideoRate() {
+      return Math.max(0.6, Math.min(1.1, Number(liveVideoSpeed.value || 85) / 100));
+    }
+
+    function speakLiveTranslation(text, duration, segment, index) {
       const clean = (text || '').trim();
       if (!clean || !liveSpeak.checked) return;
-      const seconds = Math.max(0.35, Number(duration || 0));
+      const speed = syncedVideoRate();
+      const sourceSeconds = Math.max(0.35, Number(duration || 0));
+      const playSeconds = sourceSeconds / speed;
+      const generation = liveAudioGeneration;
       liveAudioChain = liveAudioChain.then(async () => {
+        if (generation !== liveAudioGeneration) return;
         const response = await fetch('/api/tts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -953,13 +1001,32 @@
             text: clean,
             lang: liveTargetLang.value,
             voice: liveVoiceSelect.value,
-            duration: seconds
+            duration: playSeconds
           })
         });
+        if (generation !== liveAudioGeneration) return;
         const data = await response.json();
         if (!response.ok || !data.success) throw new Error(data.detail || 'TTS failed.');
+        if (generation !== liveAudioGeneration) return;
+        if (liveCurrentAudio) {
+          liveCurrentAudio.pause();
+          liveCurrentAudio.removeAttribute('src');
+        }
         const audio = new Audio('data:' + data.mime_type + ';base64,' + data.audio_data);
-        await audio.play();
+        liveCurrentAudio = audio;
+        liveOriginal.textContent = segment.source_text || '';
+        liveTranslated.textContent = clean;
+        liveTranscript.value += (liveTranscript.value ? '\n\n' : '') + '[' + index + '] ' + (segment.source_text || '') + '\n' + clean;
+        liveTranscript.scrollTop = liveTranscript.scrollHeight;
+        setLiveStatus('Playing synced dub chunk ' + index + '.', 'ok');
+        liveVideo.muted = true;
+        liveVideo.volume = 0;
+        liveVideo.playbackRate = speed;
+        if (segment && Number.isFinite(Number(segment.start))) {
+          liveVideo.currentTime = Math.max(0, Number(segment.start));
+        }
+        await Promise.allSettled([liveVideo.play(), audio.play()]);
+        await waitForSegmentDuration(audio, playSeconds, generation);
       }).catch(() => {});
     }
 
@@ -994,8 +1061,10 @@
         liveVideo.src = source.play_url;
         liveVideo.muted = true;
         liveVideo.volume = 0;
+        liveVideo.playbackRate = syncedVideoRate();
         liveVideo.style.display = 'block';
-        liveVideo.play().catch(() => {});
+        liveVideo.pause();
+        liveVideo.currentTime = 0;
         setLiveStatus('Streaming translation and dubbing chunks...');
 
         const streamResponse = await fetch('/api/transcribe-translate-stream', {
@@ -1033,12 +1102,8 @@
             } else if (event.type === 'segment') {
               segmentCount = event.index || (segmentCount + 1);
               const segment = event.segment || {};
-              liveOriginal.textContent = segment.source_text || '';
-              liveTranslated.textContent = segment.text || '';
-              liveTranscript.value += (liveTranscript.value ? '\n\n' : '') + '[' + segmentCount + '] ' + (segment.source_text || '') + '\n' + (segment.text || '');
-              liveTranscript.scrollTop = liveTranscript.scrollHeight;
-              speakLiveTranslation(segment.text || '', Math.max(0.35, Number(segment.end || 0) - Number(segment.start || 0)));
-              setLiveStatus('URL live dubbing: ' + segmentCount + ' chunks translated.', 'ok');
+              speakLiveTranslation(segment.text || '', Math.max(0.35, Number(segment.end || 0) - Number(segment.start || 0)), segment, segmentCount);
+              setLiveStatus('Queued synced dub chunk ' + segmentCount + '.', 'ok');
             } else if (event.type === 'done') {
               liveMeta.innerHTML = '<span>URL live dubbing complete</span><span>Detected: ' + (event.source_language || 'unknown') + '</span><span>Segments: ' + ((event.segments || []).length) + '</span>';
               setLiveStatus('URL live dubbing complete.', 'ok');
@@ -1243,6 +1308,9 @@
       stopLiveUrlDubbing();
     });
     liveClearButton.addEventListener('click', clearLiveInterpreter);
+    liveVideoSpeed.addEventListener('input', () => {
+      if (liveVideo.src) liveVideo.playbackRate = Math.max(0.6, Math.min(1.1, Number(liveVideoSpeed.value || 85) / 100));
+    });
     pickButton.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', () => processFile(fileInput.files[0]));
     urlButton.addEventListener('click', processUrl);

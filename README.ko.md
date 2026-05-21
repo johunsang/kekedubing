@@ -61,6 +61,21 @@ English docs: [README.en.md](README.en.md)
  9. FFmpeg가 더빙 오디오와 자막을 영상에 번인
 10. 결과 MP4 다운로드
 
+## Live Interpreter URL 실시간 더빙
+
+`Live Interpreter` 탭은 마이크 통역이 아니라 URL 영상 실시간 더빙용입니다.
+
+1. 유튜브 또는 지원 영상 URL을 붙여넣습니다.
+2. 소스 언어, 타겟 언어, Supertonic 목소리를 선택합니다.
+3. `Download` 버튼으로 로컬 번역 모델과 폰트 지원 상태를 설치/확인합니다.
+4. `Live dub URL`을 누릅니다.
+5. 원본 영상은 무음으로 재생됩니다.
+6. Whisper가 만든 짧은 조각을 바로 번역하지 않고, 3~7초 정도의 긴 문장 묶음으로 이어 붙입니다.
+7. 묶음 단위로 번역하고, Supertonic 음성을 합성한 뒤 FFmpeg로 정확한 길이에 맞춰 패딩/트림합니다.
+8. 해당 세그먼트의 무음 영상, 더빙 음성, 하단 자막이 같은 순간에 시작됩니다.
+
+이 모드는 `yt-dlp`, `faster-whisper`, `Argos Translate`, `Supertonic`, `FFmpeg`를 모두 로컬 서버에서 사용합니다.
+
 ## 로컬 모델과 리소스
 
 번역 모델은 처음부터 전부 받지 않습니다. 앱에서 타겟 언어 옆 `Download` 버튼을 누르면 현재 선택한 소스/타겟 언어에 필요한 Argos 모델을 내려받습니다.
@@ -121,6 +136,9 @@ Set-ExecutionPolicy -Scope Process Bypass
 | `SUBTITLE_FONT` | `Noto Sans` | 기본 자막 폰트 |
 | `MIN_DUB_SPEED` | `0.85` | 더빙 최소 배속 |
 | `MAX_DUB_SPEED` | `1.75` | 더빙 최대 배속 |
+| `LIVE_DUB_MIN_SECONDS` | `3.0` | 문장 부호 기준 라이브 더빙 묶음 최소 길이 |
+| `LIVE_DUB_MAX_SECONDS` | `7.0` | 라이브 더빙 묶음 최대 길이 |
+| `LIVE_DUB_MAX_CHARS` | `220` | 라이브 더빙 묶음 최대 원문 글자 수 |
 
 ## 출력 폴더
 
